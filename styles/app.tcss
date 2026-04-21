@@ -1,0 +1,6 @@
+/* styles/app.tcss */
+Screen {
+    layout: grid;
+    grid-size: 2 2;
+    grid-gutter: 1;
+}
