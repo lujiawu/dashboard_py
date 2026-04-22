@@ -14,12 +14,7 @@ class AgentsPanel(Static):
         """Original method for updating demo agents"""
         agent_lines = []
         for agent in agents:
-            status_map = {
-                "running": "[RUNNING]",
-                "idle": "[IDLE]",
-                "stopped": "[STOPPED]"
-            }
-            status_text = status_map.get(agent.status, "[UNKNOWN]")
+            status_text = agent.status
             agent_lines.append(f"{agent.name:<15} {status_text}")
         
         content = "\n".join(agent_lines) if agent_lines else "No agents running"
@@ -50,7 +45,7 @@ class AgentsPanel(Static):
                 
                 # Only include sessions updated within the last 24 hours
                 # Changed from 1 hour to 24 hours to show more sessions
-                if time_diff <= 24:
+                if time_diff <= 1:
                     filtered_sessions.append((session, update_time))
                     
             except ValueError:
@@ -69,13 +64,8 @@ class AgentsPanel(Static):
                 status_val = "unknown"
             
             # Format status with mapping
-            status_map = {
-                "running": "[RUNNING]",
-                "idle": "[IDLE]",
-                "busy": "[BUSY]",
-                "error": "[ERROR]"
-            }
-            status_text = status_map.get(status_val, f"[{status_val.upper()}]")
+           
+            status_text = status_val
             
             # Format directory (truncate if too long)
             directory = session.directory if session.directory else "Unknown"
@@ -97,12 +87,7 @@ class AgentsPanel(Static):
         """Original method for demo agents formatting"""
         agent_lines = []
         for agent in agents:
-            status_map = {
-                "running": "[RUNNING]",
-                "idle": "[IDLE]", 
-                "stopped": "[STOPPED]"
-            }
-            status_text = status_map.get(agent.status, "[UNKNOWN]")
+            status_text = agent.status
             agent_lines.append(f"{agent.name:<15} {status_text}")
         
         return "\n".join(agent_lines) if agent_lines else "No agents running"
