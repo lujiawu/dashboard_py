@@ -7,6 +7,8 @@ from widgets.system_panel import SystemPanel
 from widgets.agents_panel import AgentsPanel  
 from widgets.todo_panel import TodoPanel
 from widgets.notes_panel import NotesPanel
+from store.sources.system_source import SystemDataSource
+
 
 class DashboardApp(App):
     CSS_PATH = "styles/app.tcss"
@@ -25,21 +27,36 @@ class DashboardApp(App):
         )
 
     def on_mount(self):
-        self.store.subscribe(self.on_state_change)
-        self.set_interval(2, self.refresh_data)
-        # 初始化demo数据
-        self.refresh_data()
+        self.store.subscribe('system', self.on_system_change)
+        self.store.subscribe('app', self.on_state_change)
+        
+        # 创建系统数据源
+        self.system_source = SystemDataSource(refresh_interval=2.0, top_processes_limit=5)
+        
+        # 定期获取真实系统数据
+        self.set_interval(self.system_source.refresh_interval, self.refresh_system_data)
+        
+        # 初始化数据        
+        self.refresh_system_data()
+        self.init_demo_data()
+        
         # 添加通知
         self.notify("Press 't' to toggle first todo, 'q' to quit", timeout=5)
 
-    def refresh_data(self):
+    async def refresh_system_data(self):
+        """刷新系统数据，替换原有的模拟数据"""
+        system_data_dict = await self.system_source.fetch()
+        
+        # 将字典转换为 SystemData 对象
+        from models.types import SystemData
+        system_data = SystemData(**system_data_dict)
+        
+        # 更新系统的模块数据
+        self.store.update_module('system', system_data)
+
+    def init_demo_data(self):
+        """初始化非系统相关的演示数据"""
         state = self.store.state
-        
-        # Demo系统数据
-        state.system.cpu = (state.system.cpu + 5) % 100
-        state.system.memory = (state.system.memory + 3) % 80
-        state.system.disk = 45.0
-        
         # Demo agent数据
         state.agents = [
             Agent("opencode-core", "running"),
@@ -64,10 +81,13 @@ class DashboardApp(App):
         
         self.store.set_state(state)
 
+    def on_system_change(self, system_data):
+        """系统数据变更时的处理"""
+        system_panel = SystemPanel()
+        self.query_one("#system").update(system_panel.format_text(system_data))
+
     def on_state_change(self, state: AppState):
-        sys_panel = SystemPanel()
-        self.query_one("#system").update(sys_panel.format_text(state.system))
-        
+        """通用状态变更处理"""
         agents_panel = AgentsPanel()
         self.query_one("#agents").update(agents_panel.format_text(state.agents))
         
