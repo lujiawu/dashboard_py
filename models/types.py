@@ -17,11 +17,17 @@ class Todo:
     id: str
     content: str
     completed: bool = False
+    
+    def __hash__(self):
+        return id(self)
 
 @dataclass
 class Note:
     id: str
     content: str
+
+    def __hash__(self):
+        return id(self)
 
 @dataclass
 class AppState:
