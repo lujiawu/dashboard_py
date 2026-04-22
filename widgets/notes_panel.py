@@ -1,6 +1,4 @@
 from textual.widgets import Static
-from rich.panel import Panel
-from rich.text import Text
 from models.types import Note
 
 class NotesPanel(Static):
@@ -8,9 +6,12 @@ class NotesPanel(Static):
         if not notes:
             content = "No notes yet"
         else:
-            content_parts = []
-            for note in notes[:5]:  # 只显示最近5条
-                content_parts.append(f"• {note.content}")
-            content = "\n".join(content_parts)
+            content = "\n".join([f"• {note.content}" for note in notes])
         
-        self.update(Panel(content, title="Notes", border_style="yellow"))
+        self.update(content)
+    
+    def format_text(self, notes: list[Note]):
+        if not notes:
+            return "No notes yet"
+        else:
+            return "\n".join([f"• {note.content}" for note in notes])

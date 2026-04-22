@@ -1,5 +1,6 @@
 from textual.app import App, ComposeResult
 from textual.containers import Grid
+from textual.widgets import Static
 from store.store import Store
 from models.types import AppState, Agent, Todo, Note
 from widgets.system_panel import SystemPanel
@@ -16,10 +17,10 @@ class DashboardApp(App):
 
     def compose(self) -> ComposeResult:
         yield Grid(
-            SystemPanel(id="system"),
-            AgentsPanel(id="agents"),
-            TodoPanel(id="todo"),
-            NotesPanel(id="notes"),
+            Static(id="system", classes="panel"),
+            Static(id="agents", classes="panel"), 
+            Static(id="todo", classes="panel"),
+            Static(id="notes", classes="panel"),
             id="main-grid"
         )
 
@@ -64,10 +65,17 @@ class DashboardApp(App):
         self.store.set_state(state)
 
     def on_state_change(self, state: AppState):
-        self.query_one("#system").update_data(state.system)
-        self.query_one("#agents").update_agents(state.agents)
-        self.query_one("#todo").set_todos(state.todos)
-        self.query_one("#notes").update_notes(state.notes)
+        sys_panel = SystemPanel()
+        self.query_one("#system").update(sys_panel.format_text(state.system))
+        
+        agents_panel = AgentsPanel()
+        self.query_one("#agents").update(agents_panel.format_text(state.agents))
+        
+        todo_panel = TodoPanel()
+        self.query_one("#todo").update(todo_panel.format_text(state.todos))
+        
+        notes_panel = NotesPanel()
+        self.query_one("#notes").update(notes_panel.format_text(state.notes))
 
     def on_key(self, event):
         if event.key == "t":

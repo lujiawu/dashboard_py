@@ -1,16 +1,30 @@
 from textual.widgets import Static
-from rich.panel import Panel
-from rich.table import Table
 from models.types import Agent
 
 class AgentsPanel(Static):
     def update_agents(self, agents: list[Agent]):
-        table = Table(show_header=True, header_style="bold")
-        table.add_column("Agent", style="cyan")
-        table.add_column("Status", style="magenta")
-        
+        agent_lines = []
         for agent in agents:
-            status_color = "green" if agent.status == "running" else "yellow" if agent.status == "idle" else "red"
-            table.add_row(agent.name, f"[{status_color}]{agent.status}[/]")
+            status_map = {
+                "running": "[RUNNING]",
+                "idle": "[IDLE]",
+                "stopped": "[STOPPED]"
+            }
+            status_text = status_map.get(agent.status, "[UNKNOWN]")
+            agent_lines.append(f"{agent.name:<15} {status_text}")
         
-        self.update(Panel(table, title="Agents", border_style="blue"))
+        content = "\n".join(agent_lines) if agent_lines else "No agents running"
+        self.update(content)
+    
+    def format_text(self, agents: list[Agent]):
+        agent_lines = []
+        for agent in agents:
+            status_map = {
+                "running": "[RUNNING]",
+                "idle": "[IDLE]", 
+                "stopped": "[STOPPED]"
+            }
+            status_text = status_map.get(agent.status, "[UNKNOWN]")
+            agent_lines.append(f"{agent.name:<15} {status_text}")
+        
+        return "\n".join(agent_lines) if agent_lines else "No agents running"
