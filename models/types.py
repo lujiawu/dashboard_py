@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
+
 
 @dataclass
 class ProcessInfo:
@@ -28,6 +29,21 @@ class SystemData:
     boot_time: float = 0.0
     top_processes: list = field(default_factory=list)  # top N 进程信息
 
+
+@dataclass
+class AgentSession:
+    id: str
+    title: str
+    directory: str
+    status: str
+    start_time: str = ""
+    update_time: str = ""
+    error: Optional[str] = None
+
+    def __hash__(self):
+        return id(self)
+
+
 @dataclass
 class Agent:
     name: str
@@ -53,6 +69,6 @@ class Note:
 @dataclass
 class AppState:
     system: SystemData = field(default_factory=SystemData)
-    agents: List[Agent] = field(default_factory=list)
+    sessions: List[AgentSession] = field(default_factory=list)
     todos: List[Todo] = field(default_factory=list)
     notes: List[Note] = field(default_factory=list)
