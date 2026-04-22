@@ -38,8 +38,10 @@ class AgentsPanel(Static):
                 # Parse update time from ISO format string like "2026-04-22T09:35:53.040Z"
                 # If updateTime ends with 'Z', replace with '+00:00' for parsing
                 update_time_str = session.update_time
-                if update_time_str.endswith('Z'):
+                if update_time_str and update_time_str.endswith('Z'):
                     update_time_str = update_time_str[:-1] + '+00:00'
+                elif not update_time_str:  # Handle empty updateTime
+                    continue  # Skip sessions without update time
                 
                 update_time = datetime.fromisoformat(update_time_str)
                 
@@ -60,6 +62,11 @@ class AgentsPanel(Static):
         # Format the session lines
         session_lines = []
         for session, _ in filtered_sessions:
+            # Defense: handle empty status
+            status_val = session.status.strip().lower() if session.status else "unknown"
+            if not status_val:  # If stripped status is empty
+                status_val = "unknown"
+            
             # Format status with mapping
             status_map = {
                 "running": "[RUNNING]",
@@ -67,7 +74,7 @@ class AgentsPanel(Static):
                 "busy": "[BUSY]",
                 "error": "[ERROR]"
             }
-            status_text = status_map.get(session.status.lower(), f"[{session.status.upper()}]")
+            status_text = status_map.get(status_val, f"[{status_val.upper()}]")
             
             # Format directory (truncate if too long)
             directory = session.directory if session.directory else "Unknown"

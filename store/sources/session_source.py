@@ -81,11 +81,13 @@ class SessionDataSource(DataSource[List[AgentSession]]):
                     title = data.get("title", "")
                     directory = data.get("directory", "")
                     
-                    # Handle status - try properties.status.type first, default to status if not set
+                    # Priority 1: Use top-level status
+                    # Priority 2: Use properties.status.type as fallback
                     status = data.get("status", "unknown")
-                    properties_status = data.get("properties", {}).get("status", {})
-                    if isinstance(properties_status, dict) and "type" in properties_status:
-                        status = properties_status["type"]
+                    if not status or status == "unknown":
+                        properties_status = data.get("properties", {}).get("status", {})
+                        if isinstance(properties_status, dict) and "type" in properties_status:
+                            status = properties_status["type"]
                     
                     start_time = data.get("startTime", "")
                     update_time = data.get("updateTime", "")
