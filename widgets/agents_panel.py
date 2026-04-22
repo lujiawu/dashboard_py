@@ -48,8 +48,9 @@ class AgentsPanel(Static):
                 # Calculate difference in hours
                 time_diff = abs((current_time - update_time).total_seconds()) / 3600
                 
-                # Only include sessions updated within the last hour
-                if time_diff <= 1:
+                # Only include sessions updated within the last 24 hours
+                # Changed from 1 hour to 24 hours to show more sessions
+                if time_diff <= 24:
                     filtered_sessions.append((session, update_time))
                     
             except ValueError:
@@ -90,7 +91,7 @@ class AgentsPanel(Static):
             formatted_line = f"{status_text:<10} {directory:<15} | {title}"
             session_lines.append(formatted_line)
         
-        return "\n".join(session_lines) if session_lines else "No sessions updated in the past hour"
+        return "\n".join(session_lines) if session_lines else "No sessions updated in the past 24 hours"
     
     def format_demo_text(self, agents: list[Agent]):
         """Original method for demo agents formatting"""
