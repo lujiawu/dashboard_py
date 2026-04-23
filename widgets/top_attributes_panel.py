@@ -1,6 +1,9 @@
+import logging
 from textual.containers import VerticalScroll
 from textual.widgets import Static
 from models.types import RankedItem
+
+logger = logging.getLogger(__name__)
 
 
 class TopAttributesPanel(VerticalScroll):
@@ -40,4 +43,4 @@ class TopAttributesPanel(VerticalScroll):
         ]
         content = self.query_one("#content", Static)
         content.update(self.format_text(mock_data))
-        self.app.log.info(f"[TopAttributesPanel] updated: items={len(mock_data)}, panel_size={self.size}, content_size={content.size}")
+        logger.info(f"[TopAttributesPanel] updated: items={len(mock_data)}, panel_size={self.size}, content_size={content.size}")

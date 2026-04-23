@@ -1,6 +1,9 @@
+import logging
 from textual.containers import VerticalScroll
 from textual.widgets import Static
 from models.types import LogLevelStats
+
+logger = logging.getLogger(__name__)
 
 
 class LogCountsPanel(VerticalScroll):
@@ -49,4 +52,4 @@ class LogCountsPanel(VerticalScroll):
         )
         content = self.query_one("#content", Static)
         content.update(self.format_text(histogram, stats))
-        self.app.log.info(f"[LogCountsPanel] updated: histogram_len={len(histogram)}, panel_size={self.size}, content_size={content.size}")
+        logger.info(f"[LogCountsPanel] updated: histogram_len={len(histogram)}, panel_size={self.size}, content_size={content.size}")

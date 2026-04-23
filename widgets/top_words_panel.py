@@ -1,13 +1,16 @@
+import logging
 from textual.containers import VerticalScroll
 from textual.widgets import Static
 from models.types import RankedItem
 
+logger = logging.getLogger(__name__)
+
 
 class TopWordsPanel(VerticalScroll):
     def compose(self):
-        self.log.info("[TopWordsPanel] compose start")
+        logger.info("[TopWordsPanel] compose start")
         yield Static(id="content", expand=True)
-        self.log.info("[TopWordsPanel] compose end")
+        logger.info("[TopWordsPanel] compose end")
 
     def format_text(self, items: list[RankedItem]) -> str:
         if not items:
@@ -42,4 +45,4 @@ class TopWordsPanel(VerticalScroll):
         ]
         content = self.query_one("#content", Static)
         content.update(self.format_text(mock_data))
-        self.app.log.info(f"[TopWordsPanel] updated: items={len(mock_data)}, panel_size={self.size}, content_size={content.size}")
+        logger.info(f"[TopWordsPanel] updated: items={len(mock_data)}, panel_size={self.size}, content_size={content.size}")
