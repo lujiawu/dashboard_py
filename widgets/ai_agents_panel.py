@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from textual.containers import VerticalScroll
 from textual.widgets import Static
 from models.types import AgentSession
@@ -6,6 +6,19 @@ from models.types import AgentSession
 
 class AiAgentsPanel(VerticalScroll):
     """Display active opencode sessions with status colors."""
+
+    STATUS_EMOJI = {
+        "running": "⚡",
+        "idle": "✅",
+        "waiting": "⚡❓",
+        "error": "⚡❌",
+    }
+
+    STATUS_PRIORITY = {
+        "running": 0,
+        "idle": 1,
+        "error": 2,
+    }
 
     def compose(self):
         yield Static(id="content", expand=True)
@@ -31,30 +44,44 @@ class AiAgentsPanel(VerticalScroll):
                 update_time = datetime.fromisoformat(ts)
 
                 hours_diff = abs((current_time - update_time).total_seconds()) / 3600
-                if hours_diff <= 24:
+                if hours_diff <= 1:
                     filtered.append((session, update_time))
             except ValueError:
                 continue
 
-        # Sort descending by update time
-        filtered.sort(key=lambda x: x[1], reverse=True)
-
         if not filtered:
-            return "No sessions updated in the past 24 hours"
+            return "No sessions updated in the past hour"
+
+        # Sort by status priority, then update time descending
+        def sort_key(item):
+            session, update_time = item
+            status = (session.status or "").strip().lower() or "unknown"
+            priority = self.STATUS_PRIORITY.get(status, 99)
+            return (priority, -update_time.timestamp())
+
+        filtered.sort(key=sort_key)
 
         lines = []
-        for session, _ in filtered:
+        for session, update_time in filtered:
             status = (session.status or "").strip().lower() or "unknown"
-            tag = "bold bright_green" if status == "running" else "blue"
+            if status == "running":
+                tag = "bold #00ff00"
+            elif status == "idle":
+                tag = "bold white"
+            elif status == "error":
+                tag = "bold #ff5252"
+            else:
+                tag = "dim white"
+            emoji = self.STATUS_EMOJI.get(status, "⚪")
 
             directory = session.directory or "Unknown"
             if len(directory) > 15:
                 directory = directory[:12] + "..."
 
-            title = session.title or ""
-            if len(title) > 50:
-                title = title[:47] + "..."
+            # Convert to Beijing time (UTC+8)
+            beijing_time = update_time.astimezone(timezone(timedelta(hours=8)))
+            time_str = beijing_time.strftime("%H:%M")
 
-            lines.append(f"[{tag}]{directory:<15} | {title}[/{tag}]")
+            lines.append(f"[{tag}]{emoji} {directory:<15} {time_str}[/{tag}]")
 
         return "\n".join(lines)
