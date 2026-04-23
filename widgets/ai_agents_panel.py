@@ -84,4 +84,8 @@ class AiAgentsPanel(VerticalScroll):
 
             lines.append(f"[{tag}]{emoji} {directory:<15} {time_str}[/{tag}]")
 
+        # Pad to at least 6 lines so the panel maintains minimum height
+        while len(lines) < 6:
+            lines.append("")
+
         return "\n".join(lines)
