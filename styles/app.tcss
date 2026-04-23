@@ -14,3 +14,26 @@
     padding: 1;
     height: 100%;
 }
+
+#notes {
+    MarkdownBlock {
+        margin: 0 0;
+        padding: 0 0 0 1;
+    }
+    MarkdownHeader {
+        margin: 0 0 0 0;
+        text-style: bold;
+    }
+    MarkdownFence {
+        margin: 0 0;
+        padding: 0 1;
+    }
+    MarkdownParagraph {
+        margin: 0 0;
+    }
+    MarkdownBulletList,
+    MarkdownOrderedList {
+        margin: 0 0;
+        padding: 0 1;
+    }
+}

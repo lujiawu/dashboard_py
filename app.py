@@ -2,7 +2,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Grid
 from textual.widgets import Static
 from store.store import Store
-from models.types import AppState, Agent, Todo, Note
+from models.types import AppState, Agent, Todo
 from widgets.system_panel import SystemPanel
 from widgets.agents_panel import AgentsPanel  
 from widgets.todo_panel import TodoPanel
@@ -23,7 +23,7 @@ class DashboardApp(App):
             Static(id="system", classes="panel"),
             Static(id="agents", classes="panel"), 
             Static(id="todo", classes="panel"),
-            Static(id="notes", classes="panel"),
+            NotesPanel(),  # Changed from Static to NotesPanel
             id="main-grid"
         )
 
@@ -71,13 +71,6 @@ class DashboardApp(App):
             Todo("3", "添加键盘交互", False)
         ]
         
-        # Demo notes data
-        state.notes = [
-            Note("1", "Textual比预期更容易上手"),
-            Note("2", "状态驱动架构很清晰"),
-            Note("3", "下一步添加持久化")
-        ]
-        
         # Also update sessions initially
         self.refresh_sessions_data()
         
@@ -107,8 +100,6 @@ class DashboardApp(App):
         todo_panel = TodoPanel()
         self.query_one("#todo").update(todo_panel.format_text(state.todos))
         
-        notes_panel = NotesPanel()
-        self.query_one("#notes").update(notes_panel.format_text(state.notes))
 
     def on_key(self, event):
         if event.key == "t":

@@ -59,16 +59,7 @@ class Todo:
         return id(self)
 
 @dataclass
-class Note:
-    id: str
-    content: str
-
-    def __hash__(self):
-        return id(self)
-
-@dataclass
 class AppState:
     system: SystemData = field(default_factory=SystemData)
     sessions: List[AgentSession] = field(default_factory=list)
     todos: List[Todo] = field(default_factory=list)
-    notes: List[Note] = field(default_factory=list)
