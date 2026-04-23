@@ -2,38 +2,23 @@
 
 #main-grid {
     layout: grid;
-    grid-size: 2 2;
+    grid-size: 2 3;
     grid-columns: 1fr 1fr;
-    grid-rows: 1fr 1fr; 
+    grid-rows: auto auto 1fr; 
     grid-gutter: 1;
     height: 100%;
 }
 
 .panel {
     border: solid $primary;
-    padding: 1;
+    padding: 0 1;
     height: 100%;
 }
 
-#notes {
-    MarkdownBlock {
-        margin: 0 0;
-        padding: 0 0 0 1;
-    }
-    MarkdownHeader {
-        margin: 0 0 0 0;
-        text-style: bold;
-    }
-    MarkdownFence {
-        margin: 0 0;
-        padding: 0 1;
-    }
-    MarkdownParagraph {
-        margin: 0 0;
-    }
-    MarkdownBulletList,
-    MarkdownOrderedList {
-        margin: 0 0;
-        padding: 0 1;
-    }
+#log-table {
+    column-span: 2;
+}
+
+DataTable {
+    height: 100%;
 }

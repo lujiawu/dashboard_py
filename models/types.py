@@ -3,6 +3,57 @@ from typing import List, Optional
 
 
 @dataclass
+class RankedItem:
+    rank: int
+    label: str
+    count: int
+    max_count: int = 0
+
+    @property
+    def percentage(self) -> float:
+        if self.max_count == 0:
+            return 0.0
+        return (self.count / self.max_count) * 100
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class LogPattern:
+    pattern: str
+    percentage: float
+    count: int
+    color: str = "white"
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class LogLevelStats:
+    fatal: int = 0
+    error: int = 0
+    warn: int = 0
+    info: int = 0
+    debug: int = 0
+    trace: int = 0
+    total: int = 0
+
+
+@dataclass
+class LogEntry:
+    time: str
+    level: str
+    host: str
+    service: str
+    message: str
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class ProcessInfo:
     pid: int
     name: str
