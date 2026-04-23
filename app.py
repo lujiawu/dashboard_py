@@ -1,6 +1,5 @@
 from textual.app import App, ComposeResult
 from textual.containers import Grid
-from textual.widgets import Static
 from widgets.top_words_panel import TopWordsPanel
 from widgets.top_attributes_panel import TopAttributesPanel
 from widgets.log_patterns_panel import LogPatternsPanel
@@ -10,6 +9,7 @@ from widgets.log_table_panel import LogTablePanel
 
 class DashboardApp(App):
     CSS_PATH = "styles/app.tcss"
+    LOG_PATH = "dashboard.log"
 
     def compose(self) -> ComposeResult:
         yield Grid(
@@ -22,11 +22,13 @@ class DashboardApp(App):
         )
 
     def on_mount(self):
+        self.log.info("[App] on_mount start")
         self.query_one("#top-words", TopWordsPanel).update_mock_data()
         self.query_one("#top-attributes", TopAttributesPanel).update_mock_data()
         self.query_one("#log-patterns", LogPatternsPanel).update_mock_data()
         self.query_one("#log-counts", LogCountsPanel).update_mock_data()
-        
+        self.log.info("[App] on_mount end")
+
         self.notify("Press 'q' to quit, 'r' to refresh", timeout=5)
 
     def on_key(self, event):

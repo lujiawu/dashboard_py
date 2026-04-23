@@ -1,5 +1,4 @@
 from textual.widgets import DataTable
-from textual.app import ComposeResult
 from models.types import LogEntry
 
 
@@ -7,12 +6,12 @@ class LogTablePanel(DataTable):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.zebra_stripes = True
-    
+
     def on_mount(self):
         self.cursor_type = "row"
         self.add_columns("Time", "Level", "Host", "Service", "Message")
         self.add_rows(self._get_mock_data())
-    
+
     def _get_mock_data(self) -> list[list[str]]:
         return [
             ["12:22:08", "INFO", "08b51e8316c6", "cart", "GetCartAsync called with userId={userId}"],
