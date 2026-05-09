@@ -15,7 +15,7 @@ def _extract_hhmm(timestamp: str) -> str:
     return timestamp
 
 
-def _is_recent(timestamp: str, hours: int = 1) -> bool:
+def _is_recent(timestamp: str, hours: int = 24) -> bool:
     """Check if timestamp is within N hours (string compare, Beijing time)."""
     if not timestamp:
         return False
@@ -55,64 +55,42 @@ class AiAgentsPanel(VerticalScroll):
         filtered = [(s, _extract_hhmm(s.update_time)) for s in sessions if _is_recent(s.update_time)]
 
         if not filtered:
-            return "No sessions updated in the past hour"
+            return "No sessions updated in the past day"
 
-        groups = {}
-        for session, hhmm in filtered:
-            host = session.host or "local"
-            groups.setdefault(host, []).append((session, hhmm))
-
-        # Always local first, then remote groups
-        def _group_order(host):
-            if host == "local":
-                return (0, host)
-            return (1, host)
+        # Sort: update time descending first, then running first
+        filtered.sort(key=lambda item: item[0].update_time or "", reverse=True)
+        filtered.sort(key=lambda item: 0 if (item[0].status or "").strip().lower() == "running" else 1)
 
         lines = []
-        for host in sorted(groups, key=_group_order):
-            group = groups[host]
-            # Sort by time descending first, then stable sort by status priority
-            group.sort(key=lambda item: item[0].update_time or "", reverse=True)
-            group.sort(key=lambda item: self.STATUS_PRIORITY.get(
-                (item[0].status or "").strip().lower() or "unknown", 99))
-
-            if host == "local":
-                label = "[本地]"
+        for session, hhmm in filtered:
+            status = (session.status or "").strip().lower() or "unknown"
+            if status == "running":
+                color = "bold #00ff00"
+            elif status == "idle":
+                color = "bold white"
+            elif status == "error":
+                color = "bold #ff5252"
             else:
-                label = f"[远程 - {host}]"
-            lines.append(f"[bold grey]{label}[/bold grey]")
+                color = "dim white"
+            emoji = self.STATUS_EMOJI.get(status, "\u26aa")
+            host_mark = "\U0001f310" if session.host and session.host != "local" else ""
 
-            for session, hhmm in group:
-                status = (session.status or "").strip().lower() or "unknown"
-                if status == "running":
-                    color = "bold #00ff00"
-                elif status == "idle":
-                    color = "bold white"
-                elif status == "error":
-                    color = "bold #ff5252"
-                else:
-                    color = "dim white"
-                emoji = self.STATUS_EMOJI.get(status, "\u26aa")
-                remote_mark = "\U0001f310 " if host != "local" else ""
+            agent_label = f"{session.agent:<5}" if session.agent else "—    "
+            name = session.title or session.directory or "?"
+            if len(name) > 20:
+                name = name[:17] + "..."
 
-                agent_label = f"{session.agent:<5}" if session.agent else "—    "
-                name = session.title or session.directory or "?"
-                if len(name) > 20:
-                    name = name[:17] + "..."
+            model_label = session.model_id or "—"
+            if "/" in model_label:
+                model_label = model_label.rsplit("/", 1)[-1]
+            if len(model_label) > 10:
+                model_label = model_label[:7] + "..."
 
-                model_label = session.model_id or "—"
-                if "/" in model_label:
-                    model_label = model_label.rsplit("/", 1)[-1]
-                if len(model_label) > 10:
-                    model_label = model_label[:7] + "..."
-
-                time_str = _extract_hhmm(session.update_time)
-                lines.append(
-                    f"[{color}]{remote_mark}{emoji} {agent_label}  {name:<20} "
-                    f"\U0001f916 {model_label:<10} {time_str}[/{color}]"
-                )
-
-            lines.append("")
+            time_str = _extract_hhmm(session.update_time)
+            lines.append(
+                f"[{color}]{emoji} {agent_label}  {host_mark}{name:<20} "
+                f"\U0001f916 {model_label:<10} {time_str}[/{color}]"
+            )
 
         while len(lines) < 8:
             lines.append("")

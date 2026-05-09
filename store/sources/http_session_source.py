@@ -23,16 +23,17 @@ class HttpSessionDataSource(DataSource[List[AgentSession]]):
         data = await asyncio.to_thread(_get)
         sessions = []
         for item in data:
+            model = item.get("model", {})
             sessions.append(AgentSession(
                 id=item.get("id", ""),
-                title=item.get("title", ""),
-                directory=item.get("directory", ""),
-                status=item.get("status", "unknown"),
-                start_time=item.get("start_time", ""),
-                update_time=item.get("update_time", ""),
-                error=item.get("error"),
-                agent=item.get("agent", ""),
-                model_id=item.get("model_id", ""),
+                title=model.get("title", ""),
+                directory=model.get("directory", ""),
+                status=model.get("status", "unknown"),
+                start_time=model.get("startTime", ""),
+                update_time=model.get("updatedTime", ""),
+                error=model.get("error"),
+                agent=model.get("agent", ""),
+                model_id=model.get("modelId", ""),
                 host=self.host_label,
             ))
         return sessions
