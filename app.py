@@ -6,7 +6,7 @@ from widgets.ai_agents_panel import AiAgentsPanel
 from widgets.top_attributes_panel import TopAttributesPanel
 from widgets.log_patterns_panel import LogPatternsPanel
 from widgets.log_counts_panel import LogCountsPanel
-from widgets.log_table_panel import LogTablePanel
+from widgets.todo_panel import TodoPanel
 from store.sources.session_source import SessionDataSource
 from store.sources.http_session_source import HttpSessionDataSource
 
@@ -38,7 +38,7 @@ class DashboardApp(App):
                 LogCountsPanel(id="log-counts", classes="panel"),
                 id="middle-row"
             ),
-            LogTablePanel(id="log-table"),
+            TodoPanel(id="todo-list", classes="panel"),
             id="main-layout"
         )
 
