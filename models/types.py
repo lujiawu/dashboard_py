@@ -90,6 +90,9 @@ class AgentSession:
     start_time: str = ""
     update_time: str = ""
     error: Optional[str] = None
+    agent: str = ""
+    model_id: str = ""
+    host: str = "local"
 
     def __hash__(self):
         return id(self)

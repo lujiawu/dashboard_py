@@ -1,18 +1,12 @@
-import json
 import os
-import time
-from typing import List, Dict, Any, Optional, Callable
-from pathlib import Path
+from typing import List
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
 from store.sources.base import DataSource
+from store.sources.session_parser import parse_session_file
 from models.types import AgentSession
-
-# Maximum attempts when file is locked
-MAX_RETRY_ATTEMPTS = 3
-RETRY_INTERVAL_SEC = 0.5
 
 
 class SessionDataSource(DataSource[List[AgentSession]]): 
@@ -56,63 +50,15 @@ class SessionDataSource(DataSource[List[AgentSession]]):
     def load_all_sessions(self):
         """Load all session JSON files from the directory"""
         new_sessions = []
-        
-        # Get all files in the sessions directory
+
         for filename in os.listdir(self.sessions_dir):
             if filename.endswith(".json"):
                 filepath = os.path.join(self.sessions_dir, filename)
-                
-                session = self._load_json_session(filepath)
+                session = parse_session_file(filepath)
                 if session:
                     new_sessions.append(session)
-        
-        # Update the stored sessions
+
         self.sessions = new_sessions
-    
-    def _load_json_session(self, filepath: str) -> Optional[AgentSession]:
-        """Load and parse a single session JSON file with retry logic"""
-        for attempt in range(MAX_RETRY_ATTEMPTS):
-            try:
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    
-                    # Extract required fields from JSON
-                    id_val = data.get("id", "")
-                    title = data.get("title", "")
-                    directory = data.get("directory", "")
-                    
-                    # Priority 1: Use top-level status
-                    # Priority 2: Use properties.status.type as fallback
-                    status = data.get("status", "unknown")
-                    if not status or status == "unknown":
-                        properties_status = data.get("properties", {}).get("status", {})
-                        if isinstance(properties_status, dict) and "type" in properties_status:
-                            status = properties_status["type"]
-                    
-                    start_time = data.get("startTime", "")
-                    update_time = data.get("updateTime", "")
-                    error = data.get("error")
-                    
-                    return AgentSession(
-                        id=id_val,
-                        title=title,
-                        directory=Path(directory).name if directory else "",  # Just folder name
-                        status=status.lower(),
-                        start_time=start_time,
-                        update_time=update_time,
-                        error=error
-                    )
-            except (PermissionError, FileNotFoundError, json.JSONDecodeError) as e:
-                # If it's the last attempt, skip this file
-                if attempt == MAX_RETRY_ATTEMPTS - 1:
-                    return None
-                # Otherwise, wait a bit and retry (for file locks)
-                time.sleep(RETRY_INTERVAL_SEC)
-            except Exception as e:
-                # Unexpected error
-                return None
-                
-        return None
     
     async def fetch(self) -> List[AgentSession]:
         """Return the currently loaded sessions"""

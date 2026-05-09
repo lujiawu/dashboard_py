@@ -4,14 +4,35 @@ from textual.widgets import Static
 from models.types import AgentSession
 
 
+def _extract_hhmm(timestamp: str) -> str:
+    """Extract HH:MM from timestamp string (new or old format)."""
+    if not timestamp:
+        return "--:--"
+    if len(timestamp) >= 16:
+        return timestamp[11:16]
+    if len(timestamp) >= 5:
+        return timestamp[:5]
+    return timestamp
+
+
+def _is_recent(timestamp: str, hours: int = 1) -> bool:
+    """Check if timestamp is within N hours (string compare, Beijing time)."""
+    if not timestamp:
+        return False
+    ts_clean = timestamp[:16].replace("T", " ")
+    now_bj = datetime.now(timezone(timedelta(hours=8)))
+    cutoff = (now_bj - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M")
+    return ts_clean >= cutoff
+
+
 class AiAgentsPanel(VerticalScroll):
-    """Display active opencode sessions with status colors."""
+    """Display active opencode sessions with status colors, grouped by host."""
 
     STATUS_EMOJI = {
-        "running": "⚡",
-        "idle": "✅",
-        "waiting": "⚡❓",
-        "error": "⚡❌",
+        "running": "\u26a1",
+        "idle": "\u2705",
+        "waiting": "\u26a1\u2753",
+        "error": "\u26a1\u274c",
     }
 
     STATUS_PRIORITY = {
@@ -31,61 +52,69 @@ class AiAgentsPanel(VerticalScroll):
         if not sessions:
             return "No active sessions"
 
-        current_time = datetime.now(timezone.utc)
-        filtered = []
-
-        for session in sessions:
-            try:
-                ts = session.update_time or ""
-                if not ts:
-                    continue
-                if ts.endswith("Z"):
-                    ts = ts[:-1] + "+00:00"
-                update_time = datetime.fromisoformat(ts)
-
-                hours_diff = abs((current_time - update_time).total_seconds()) / 3600
-                if hours_diff <= 1:
-                    filtered.append((session, update_time))
-            except ValueError:
-                continue
+        filtered = [(s, _extract_hhmm(s.update_time)) for s in sessions if _is_recent(s.update_time)]
 
         if not filtered:
             return "No sessions updated in the past hour"
 
-        # Sort by status priority, then update time descending
-        def sort_key(item):
-            session, update_time = item
-            status = (session.status or "").strip().lower() or "unknown"
-            priority = self.STATUS_PRIORITY.get(status, 99)
-            return (priority, -update_time.timestamp())
+        groups = {}
+        for session, hhmm in filtered:
+            host = session.host or "local"
+            groups.setdefault(host, []).append((session, hhmm))
 
-        filtered.sort(key=sort_key)
+        # Always local first, then remote groups
+        def _group_order(host):
+            if host == "local":
+                return (0, host)
+            return (1, host)
 
         lines = []
-        for session, update_time in filtered:
-            status = (session.status or "").strip().lower() or "unknown"
-            if status == "running":
-                tag = "bold #00ff00"
-            elif status == "idle":
-                tag = "bold white"
-            elif status == "error":
-                tag = "bold #ff5252"
+        for host in sorted(groups, key=_group_order):
+            group = groups[host]
+            # Sort by time descending first, then stable sort by status priority
+            group.sort(key=lambda item: item[0].update_time or "", reverse=True)
+            group.sort(key=lambda item: self.STATUS_PRIORITY.get(
+                (item[0].status or "").strip().lower() or "unknown", 99))
+
+            if host == "local":
+                label = "[本地]"
             else:
-                tag = "dim white"
-            emoji = self.STATUS_EMOJI.get(status, "⚪")
+                label = f"[远程 - {host}]"
+            lines.append(f"[bold grey]{label}[/bold grey]")
 
-            directory = session.directory or "Unknown"
-            if len(directory) > 15:
-                directory = directory[:12] + "..."
+            for session, hhmm in group:
+                status = (session.status or "").strip().lower() or "unknown"
+                if status == "running":
+                    color = "bold #00ff00"
+                elif status == "idle":
+                    color = "bold white"
+                elif status == "error":
+                    color = "bold #ff5252"
+                else:
+                    color = "dim white"
+                emoji = self.STATUS_EMOJI.get(status, "\u26aa")
+                remote_mark = "\U0001f310 " if host != "local" else ""
 
-            # Convert to Beijing time (UTC+8)
-            beijing_time = update_time.astimezone(timezone(timedelta(hours=8)))
-            time_str = beijing_time.strftime("%H:%M")
+                agent_label = f"{session.agent:<5}" if session.agent else "—    "
+                name = session.title or session.directory or "?"
+                if len(name) > 20:
+                    name = name[:17] + "..."
 
-            lines.append(f"[{tag}]{emoji} {directory:<15} {time_str}[/{tag}]")
+                model_label = session.model_id or "—"
+                if "/" in model_label:
+                    model_label = model_label.rsplit("/", 1)[-1]
+                if len(model_label) > 10:
+                    model_label = model_label[:7] + "..."
 
-        # Pad to at least 6 lines so the panel maintains minimum height
-        while len(lines) < 6:
+                time_str = _extract_hhmm(session.update_time)
+                lines.append(
+                    f"[{color}]{remote_mark}{emoji} {agent_label}  {name:<20} "
+                    f"\U0001f916 {model_label:<10} {time_str}[/{color}]"
+                )
+
+            lines.append("")
+
+        while len(lines) < 8:
             lines.append("")
 
         return "\n".join(lines)

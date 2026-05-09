@@ -8,6 +8,7 @@ from widgets.log_patterns_panel import LogPatternsPanel
 from widgets.log_counts_panel import LogCountsPanel
 from widgets.log_table_panel import LogTablePanel
 from store.sources.session_source import SessionDataSource
+from store.sources.http_session_source import HttpSessionDataSource
 
 logging.basicConfig(
     filename="dashboard.log",
@@ -16,6 +17,10 @@ logging.basicConfig(
     datefmt="%H:%M:%S"
 )
 logger = logging.getLogger(__name__)
+
+# Remote server configuration
+REMOTE_API_URL = "http://your-server:8765/api/sessions"  # TODO: update with actual host
+REMOTE_HOST_LABEL = "your-server"
 
 
 class DashboardApp(App):
@@ -34,15 +39,16 @@ class DashboardApp(App):
     def on_mount(self):
         logger.info("[App] on_mount start")
 
-        # Initialize and start session watcher
         self.session_source = SessionDataSource()
         self.session_source.start_watching()
         logger.info("[App] SessionDataSource watching started")
 
-        # Start polling sessions every 2 seconds
+        # Remote HTTP data source
+        self.remote_source = HttpSessionDataSource(REMOTE_API_URL, host_label=REMOTE_HOST_LABEL)
+        logger.info(f"[App] RemoteSessionDataSource initialized: {REMOTE_API_URL}")
+
         self.set_interval(2, self._poll_sessions)
 
-        # Initialize other panels with mock data
         self.query_one("#top-attributes", TopAttributesPanel).update_mock_data()
         self.query_one("#log-patterns", LogPatternsPanel).update_mock_data()
         self.query_one("#log-counts", LogCountsPanel).update_mock_data()
@@ -51,11 +57,21 @@ class DashboardApp(App):
         self.notify("Press 'q' to quit, 'r' to refresh", timeout=5)
 
     async def _poll_sessions(self):
-        """Fetch sessions and push to AiAgentsPanel."""
+        """Fetch local + remote sessions and push to AiAgentsPanel."""
         try:
-            sessions = await self.session_source.fetch()
+            local_sessions = await self.session_source.fetch()
+            for s in local_sessions:
+                s.host = "local"
+
+            remote_sessions = []
+            try:
+                remote_sessions = await self.remote_source.fetch()
+            except Exception as e:
+                logger.warning(f"[App] Remote fetch failed: {e}")
+
+            all_sessions = local_sessions + remote_sessions
             panel = self.query_one("#ai-agents", AiAgentsPanel)
-            panel.update_sessions(sessions)
+            panel.update_sessions(all_sessions)
         except Exception as e:
             logger.error(f"[App] Failed to poll sessions: {e}")
 
