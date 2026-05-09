@@ -4,7 +4,6 @@ from textual.app import App, ComposeResult
 from textual.containers import Vertical, Horizontal
 from widgets.ai_agents_panel import AiAgentsPanel
 from widgets.top_attributes_panel import TopAttributesPanel
-from widgets.log_patterns_panel import LogPatternsPanel
 from widgets.log_counts_panel import LogCountsPanel
 from widgets.todo_panel import TodoPanel
 from store.sources.session_source import SessionDataSource
@@ -34,11 +33,10 @@ class DashboardApp(App):
                 id="top-row"
             ),
             Horizontal(
-                LogPatternsPanel(id="log-patterns", classes="panel"),
+                TodoPanel(id="todo-list", classes="panel"),
                 LogCountsPanel(id="log-counts", classes="panel"),
                 id="middle-row"
             ),
-            TodoPanel(id="todo-list", classes="panel"),
             id="main-layout"
         )
 
@@ -56,7 +54,6 @@ class DashboardApp(App):
         self.set_interval(2, self._poll_sessions)
 
         self.query_one("#top-attributes", TopAttributesPanel).update_mock_data()
-        self.query_one("#log-patterns", LogPatternsPanel).update_mock_data()
         self.query_one("#log-counts", LogCountsPanel).update_mock_data()
         logger.info("[App] on_mount end")
 
@@ -88,7 +85,6 @@ class DashboardApp(App):
         elif event.key == "r":
             asyncio.create_task(self._poll_sessions())
             self.query_one("#top-attributes", TopAttributesPanel).update_mock_data()
-            self.query_one("#log-patterns", LogPatternsPanel).update_mock_data()
             self.query_one("#log-counts", LogCountsPanel).update_mock_data()
             event.stop()
 
