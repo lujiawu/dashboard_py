@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from textual.app import App, ComposeResult
-from textual.containers import Grid
+from textual.containers import Vertical, Horizontal
 from widgets.ai_agents_panel import AiAgentsPanel
 from widgets.top_attributes_panel import TopAttributesPanel
 from widgets.log_patterns_panel import LogPatternsPanel
@@ -27,13 +27,19 @@ class DashboardApp(App):
     CSS_PATH = "styles/app.tcss"
 
     def compose(self) -> ComposeResult:
-        yield Grid(
-            AiAgentsPanel(id="ai-agents", classes="panel"),
-            TopAttributesPanel(id="top-attributes", classes="panel"),
-            LogPatternsPanel(id="log-patterns", classes="panel"),
-            LogCountsPanel(id="log-counts", classes="panel"),
+        yield Vertical(
+            Horizontal(
+                AiAgentsPanel(id="ai-agents", classes="panel"),
+                TopAttributesPanel(id="top-attributes", classes="panel"),
+                id="top-row"
+            ),
+            Horizontal(
+                LogPatternsPanel(id="log-patterns", classes="panel"),
+                LogCountsPanel(id="log-counts", classes="panel"),
+                id="middle-row"
+            ),
             LogTablePanel(id="log-table"),
-            id="main-grid"
+            id="main-layout"
         )
 
     def on_mount(self):

@@ -1,24 +1,31 @@
 /* styles/app.tcss */
 
-#main-grid {
-    layout: grid;
-    grid-size: 2 3;
-    grid-columns: 3fr 1fr;
-    grid-rows: 10 1fr 2fr;
-    grid-gutter: 1;
+#main-layout {
     height: 100%;
+}
+
+#top-row {
+    height: 10;
+}
+#top-row > #ai-agents {
+    width: 3fr;
+}
+#top-row > #top-attributes {
+    width: 1fr;
+}
+
+#middle-row {
+    height: 10;
+}
+
+#log-table {
+    height: 1fr;
 }
 
 .panel {
     border: solid $primary;
-    padding: 0 1;
+    padding: 0 0;
     height: 100%;
-}
-
-
-
-#log-table {
-    column-span: 2;
 }
 
 DataTable {
