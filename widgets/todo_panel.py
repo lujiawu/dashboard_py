@@ -58,7 +58,7 @@ class TodoPanel(ListView):
         if todo.completed:
             label_widget.styles.text_style = "strike"
         else:
-            label_widget.styles.text_style = ""
+            label_widget.styles.text_style = "none"
 
     def action_toggle_complete(self):
         index = self.index
