@@ -106,9 +106,12 @@ class Agent:
 @dataclass
 class Todo:
     id: str
-    content: str
+    subject: str
     completed: bool = False
-    
+    priority: int = 0
+    due_time: int = 0
+    created_time: int = 0
+
     def __hash__(self):
         return id(self)
 

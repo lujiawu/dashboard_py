@@ -1,83 +1,102 @@
-from textual.widgets import ListView, ListItem, Label
+from datetime import datetime, timezone, timedelta
+from textual.widgets import DataTable
 from textual.events import Click
+from textual import on
 from models.types import Todo
 
 
-class TodoPanel(ListView):
+def _priority_label(priority: int) -> str:
+    if priority >= 30:
+        return "!!!"
+    if priority == 20:
+        return "!!"
+    return "!"
+
+
+def _format_due(due_time: int) -> str:
+    if not due_time:
+        return "--"
+    try:
+        dt = datetime.fromtimestamp(due_time / 1000, tz=timezone(timedelta(hours=8)))
+        return dt.strftime("%m-%d")
+    except (ValueError, OSError):
+        return "--"
+
+
+class TodoPanel(DataTable):
     BINDINGS = [
-        ("space", "toggle_complete", "Toggle"),
         ("c", "copy_item", "Copy"),
     ]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._todos: list[Todo] = []
+        self.zebra_stripes = True
+        self._todo_map: dict[int, Todo] = {}
 
     def on_mount(self):
-        self._load_mock_data()
-        self.focus()
+        self.cursor_type = "row"
+        self.add_column("Status", width=7)
+        self.add_column("P", width=3)
+        self.add_column("Due", width=8)
+        self.add_column("Subject", width=None)
 
-    def _load_mock_data(self):
-        mock_todos = [
-            Todo("1", "Review PR #42 for auth module", False),
-            Todo("2", "Update TODO list in README", False),
-            Todo("3", "Deploy staging environment", False),
-            Todo("4", "Write unit tests for payment service", True),
-            Todo("5", "Fix timezone bug in reports", False),
-            Todo("6", "Refactor database connection pool", False),
-            Todo("7", "Update dependencies to latest versions", True),
-            Todo("8", "Review architecture decision record", False),
-        ]
-        self.set_todos(mock_todos)
+    @on(DataTable.RowSelected)
+    def on_row_selected(self, event: DataTable.RowSelected):
+        event.stop()
 
-    def set_todos(self, todos: list[Todo]):
-        self._todos = todos
-        self.query("ListItem").remove()
-        for todo in todos:
-            self.mount(ListItem(self._make_label(todo)))
+    def update_todos(self, todos: list[Todo]):
+        self._todo_map = {}
+        self.clear()
+        rows = self._build_rows(todos)
+        self.add_rows(rows)
 
-    def _make_label(self, todo: Todo) -> Label:
-        mark = "[x]" if todo.completed else "[ ]"
-        label = Label(f"{mark} {todo.content}", id=f"label-{todo.id}")
-        if todo.completed:
-            label.styles.text_style = "strike"
-        return label
+    def _build_rows(self, todos: list[Todo]) -> list[tuple]:
+        if not todos:
+            return []
+
+        pending = [t for t in todos if not t.completed]
+        done = [t for t in todos if t.completed]
+
+        pending.sort(key=lambda t: (-t.priority, t.due_time if t.due_time else 2**31))
+
+        all_todos = pending + done
+        self._todo_map = {i: todo for i, todo in enumerate(all_todos)}
+
+        rows = []
+        for todo in all_todos:
+            status = "[x]" if todo.completed else "[ ]"
+            p_str = _priority_label(todo.priority)
+            due_str = _format_due(todo.due_time)
+            subject_str = todo.subject or "?"
+            rows.append((status, p_str, due_str, subject_str))
+
+        return rows
+
+    def _all_todos(self) -> list[Todo]:
+        return [self._todo_map[i] for i in sorted(self._todo_map)]
 
     def _get_todo_at_index(self, index: int) -> Todo | None:
-        if 0 <= index < len(self._todos):
-            return self._todos[index]
-        return None
+        return self._todo_map.get(index)
 
-    def _update_item(self, index: int):
+    def mark_local_toggle(self, index: int) -> Todo | None:
+        todo = self._get_todo_at_index(index)
+        if todo is None:
+            return None
+        todo.completed = True
+        self.update_todos(self._all_todos())
+        self.cursor_row = min(index, max(0, len(self._todo_map) - 1))
+        return todo
+
+    def action_copy_item(self):
+        index = self.cursor_row
         todo = self._get_todo_at_index(index)
         if todo is None:
             return
-        label_widget = self.query_one(f"#label-{todo.id}", Label)
-        mark = "[x]" if todo.completed else "[ ]"
-        label_widget.update(f"{mark} {todo.content}")
-        if todo.completed:
-            label_widget.styles.text_style = "strike"
-        else:
-            label_widget.styles.text_style = "none"
-
-    def action_toggle_complete(self):
-        index = self.index
-        todo = self._get_todo_at_index(index)
-        if todo is None:
-            return
-        todo.completed = not todo.completed
-        self._update_item(index)
-        status = "completed" if todo.completed else "uncompleted"
-        self.notify(f"[{status}] {todo.content[:60]}{'...' if len(todo.content) > 60 else ''}", timeout=2)
+        self.app.copy_to_clipboard(todo.subject)
 
     def on_click(self, event: Click):
         if event.button == 3:
-            self.action_copy_item()
-
-    def action_copy_item(self):
-        index = self.index
-        todo = self._get_todo_at_index(index)
-        if todo is None:
-            return
-        self.app.copy_to_clipboard(todo.content)
-        self.notify(f"Copied: {todo.content[:60]}{'...' if len(todo.content) > 60 else ''}", timeout=2)
+            if self.cursor_row >= 0:
+                todo = self._get_todo_at_index(self.cursor_row)
+                if todo:
+                    self.app.copy_to_clipboard(todo.subject)
