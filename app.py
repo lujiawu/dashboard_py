@@ -88,4 +88,6 @@ class DashboardApp(App):
 
 
 if __name__ == "__main__":
+    import sys
+    sys.argv.append("-r")
     DashboardApp().run()
