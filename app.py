@@ -6,6 +6,7 @@ from widgets.ai_agents_panel import AiAgentsPanel
 from widgets.top_attributes_panel import TopAttributesPanel
 from widgets.goal_progress_panel import GoalProgressPanel
 from widgets.todo_panel import TodoPanel
+from widgets.bottom_panel import BottomPanel
 from store.sources.session_source import SessionDataSource
 from store.sources.http_session_source import HttpSessionDataSource
 from store.sources.dws_todo_source import DwsTodoSource
@@ -37,6 +38,10 @@ class DashboardApp(App):
                 TodoPanel(id="todo-list", classes="panel"),
                 GoalProgressPanel(id="goal-progress", classes="panel"),
                 id="middle-row"
+            ),
+            Horizontal(
+                BottomPanel(id="bottom-area", classes="panel"),
+                id="bottom-row"
             ),
             id="main-layout"
         )
@@ -123,7 +128,7 @@ class DashboardApp(App):
 
     async def _clipboard_write(self, text: str):
         try:
-            await self.copy_to_clip(text)
+            super().copy_to_clipboard(text)
         except Exception:
             pass
 

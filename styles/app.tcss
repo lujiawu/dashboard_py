@@ -1,5 +1,4 @@
-/* styles/app.tcss */
-
+/* ===== 整体布局 ===== */
 #main-layout {
     height: 100%;
 }
@@ -7,6 +6,14 @@
 #top-row {
     height: 10;
 }
+#middle-row {
+    height: 10;
+}
+#bottom-row {
+    height: 1fr;
+}
+
+/* ===== 列宽分配 ===== */
 #top-row > #ai-agents {
     width: 3fr;
 }
@@ -14,30 +21,25 @@
     width: 1fr;
 }
 
-#middle-row {
-    height: 10;
+#middle-row > #todo-list{
+    width: 3fr;
 }
 
-#todo-list {
-    height: 1fr;
+#middle-row > #goal-progress{
+    width: 2fr;
 }
 
+/* ===== 统一 panel 样式 ===== */
 .panel {
     border: solid $primary;
     padding: 0 0;
     height: 100%;
 }
 
+/* ===== 特定 widget 微调 ===== */
 GoalProgressPanel {
-    height: 1fr;
-    border: solid $primary;
     padding: 0 1;
 }
-
 GoalProgressPanel > Static {
     width: 100%;
-}
-
-DataTable {
-    height: 100%;
 }
