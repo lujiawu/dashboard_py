@@ -43,3 +43,13 @@ GoalProgressPanel {
 GoalProgressPanel > Static {
     width: 100%;
 }
+
+#todo-list DataTable {
+    height: 1fr;
+}
+
+#todo-list Input {
+    height: 1;
+    border: none;
+    padding: 0 1;
+}

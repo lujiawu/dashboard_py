@@ -61,6 +61,21 @@ class DwsTodoSource(DataSource[List[Todo]]):
         _log.info(f"[DWS] set_done_status rc={proc.returncode} stdout={stdout.decode().strip()!r} stderr={stderr.decode().strip()!r}")
         return proc.returncode == 0
 
+    async def create_todo(self, title: str, executor: str = "01455548515339212734") -> bool:
+        import logging
+        _log = logging.getLogger(__name__)
+        cmd = ["dws", "todo", "task", "create", "--title", title, "--executors", executor, "--format", "json", "-y"]
+        _log.info(f"[DWS] create_todo title={title!r} executor={executor}")
+
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        _log.info(f"[DWS] create_todo rc={proc.returncode} stdout={stdout.decode().strip()!r} stderr={stderr.decode().strip()!r}")
+        return proc.returncode == 0
+
     @property
     def refresh_interval(self) -> float:
         return self._refresh_interval

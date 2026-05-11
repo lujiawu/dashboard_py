@@ -1,5 +1,6 @@
 from datetime import datetime, timezone, timedelta
-from textual.widgets import DataTable
+from textual.widgets import DataTable, Input
+from textual.containers import Vertical
 from textual.events import Click
 from textual import on
 from rich.text import Text
@@ -24,31 +25,44 @@ def _format_due(due_time: int) -> str:
         return "--"
 
 
-class TodoPanel(DataTable):
+class TodoPanel(Vertical):
     BINDINGS = [
         ("c", "copy_item", "Copy"),
     ]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.zebra_stripes = True
         self._todo_map: dict[int, Todo] = {}
+        self._row_keys = []
+
+    def compose(self):
+        self._table = DataTable()
+        self._table.zebra_stripes = True
+        self._table.cursor_type = "row"
+        self._table.styles.height = "1fr"
+        yield self._table
+
+        inp = Input(placeholder="Add a todo...", id="todo-add-input")
+        yield inp
 
     def on_mount(self):
-        self.cursor_type = "row"
-        self.add_column("P", width=3)
-        self.add_column("Due", width=8)
-        self._subject_key = self.add_column("Subject", width=None)
+        self._table.add_column("P", width=3)
+        self._table.add_column("Due", width=8)
+        self._subject_key = self._table.add_column("Subject", width=None)
 
     @on(DataTable.RowSelected)
     def on_row_selected(self, event: DataTable.RowSelected):
         event.stop()
 
+    @property
+    def cursor_row(self):
+        return self._table.cursor_row
+
     def update_todos(self, todos: list[Todo]):
         self._todo_map = {}
-        self.clear()
+        self._table.clear()
         rows = self._build_rows(todos)
-        self._row_keys = self.add_rows(rows)
+        self._row_keys = self._table.add_rows(rows)
 
     def _build_rows(self, todos: list[Todo]) -> list[tuple]:
         if not todos:
@@ -78,7 +92,7 @@ class TodoPanel(DataTable):
             return None
         todo.completed = not todo.completed
         subject = Text(todo.subject or "?", style="strike" if todo.completed else "")
-        self.update_cell(self._row_keys[index], self._subject_key, subject)
+        self._table.update_cell(self._row_keys[index], self._subject_key, subject)
         return todo
 
     def action_copy_item(self):
@@ -94,3 +108,16 @@ class TodoPanel(DataTable):
                 todo = self._get_todo_at_index(self.cursor_row)
                 if todo:
                     self.app.copy_to_clipboard(todo.subject)
+
+    def on_input_submitted(self, event: Input.Submitted):
+        if event.input.id != "todo-add-input":
+            return
+        title = event.value.strip()
+        if title:
+            event.input.clear()
+            self.run_worker(self._create_todo(title))
+
+    async def _create_todo(self, title: str):
+        ok = await self.app.dws_todo_source.create_todo(title)
+        if ok:
+            await self.app._poll_todos()
