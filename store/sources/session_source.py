@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import List
 
 from watchdog.observers import Observer
@@ -16,30 +17,29 @@ class SessionDataSource(DataSource[List[AgentSession]]):
     """
 
     def __init__(self, 
-                 sessions_dir: str = "C:\\Users\\work\\.config\\opencode\\sessions", 
+                 sessions_dir: str = None,
                  refresh_interval: float = 30.0):
         """
         Initialize the session data source
         :param sessions_dir: Directory containing opencode session JSON files
         :param refresh_interval: Interval to rescan directory (backup to file events)
         """
-        self.sessions_dir = sessions_dir
+        if sessions_dir is None:
+            sessions_dir = os.path.join(Path.home(), ".config", "opencode", "sessions")
+        self.sessions_dir = str(Path(sessions_dir).expanduser())
         self._refresh_interval = refresh_interval
         
-        # Set to store active sessions by ID
         self.sessions: List[AgentSession] = []
         
-        # Initialize observer for file changes
         self.observer = Observer()
         self.event_handler = SessionFileHandler(self)
         
     def start_watching(self):
         """Start watching the sessions directory for changes"""
-        self.observer.schedule(self.event_handler, self.sessions_dir, recursive=False)
-        self.observer.start()
-        
-        # Load initial sessions
-        self.load_all_sessions()
+        if os.path.isdir(self.sessions_dir):
+            self.observer.schedule(self.event_handler, self.sessions_dir, recursive=False)
+            self.observer.start()
+            self.load_all_sessions()
     
     def stop_watching(self):
         """Stop watching the directory"""
@@ -49,6 +49,8 @@ class SessionDataSource(DataSource[List[AgentSession]]):
     
     def load_all_sessions(self):
         """Load all session JSON files from the directory"""
+        if not os.path.isdir(self.sessions_dir):
+            return
         new_sessions = []
 
         for filename in os.listdir(self.sessions_dir):
