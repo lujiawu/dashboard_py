@@ -7,9 +7,11 @@ from widgets.top_attributes_panel import TopAttributesPanel
 from widgets.goal_progress_panel import GoalProgressPanel
 from widgets.todo_panel import TodoPanel
 from widgets.bottom_panel import BottomPanel
+from models.types import GoalProgress
 from store.sources.session_source import SessionDataSource
 from store.sources.http_session_source import HttpSessionDataSource
 from store.sources.dws_todo_source import DwsTodoSource
+from store.sources.running_shoe_source import RunningShoeSource
 
 logging.basicConfig(
     filename="dashboard.log",
@@ -58,13 +60,15 @@ class DashboardApp(App):
         logger.info(f"[App] RemoteSessionDataSource initialized: {REMOTE_API_URL}")
 
         self.dws_todo_source = DwsTodoSource()
+        self.shoe_source = RunningShoeSource()
 
         self.set_interval(2, self._poll_sessions)
         self.set_interval(60, self._poll_todos)
+        self.set_interval(86400, self._poll_shoe_goals)
         asyncio.create_task(self._poll_todos())
+        asyncio.create_task(self._poll_shoe_goals())
 
         self.query_one("#top-attributes", TopAttributesPanel).update_mock_data()
-        self.query_one("#goal-progress", GoalProgressPanel).update_mock_data()
         logger.info("[App] on_mount end")
 
         self.notify("Press 'q' to quit, 'r' to refresh", timeout=5)
@@ -97,6 +101,36 @@ class DashboardApp(App):
         except Exception as e:
             logger.error(f"[App] Failed to poll todos: {e}")
 
+    async def _poll_shoe_goals(self):
+        """Fetch running shoe goals, aggregate, and push to GoalProgressPanel."""
+        try:
+            shoes = await self.shoe_source.fetch()
+            if not shoes:
+                return
+
+            total_used = sum(s.used for s in shoes)
+            total_goal = sum(s.goal for s in shoes)
+            summary = GoalProgress(
+                name="跑鞋总览", used=total_used, goal=total_goal,
+                unit="km", icon="📊"
+            )
+
+            def pick_shoes(shoes, *keywords):
+                results = []
+                for kw in keywords:
+                    for s in shoes:
+                        if kw in s.name:
+                            results.append(s)
+                            break
+                return results
+
+            picked = pick_shoes(shoes, "的卢", "赤兔")
+
+            panel = self.query_one("#goal-progress", GoalProgressPanel)
+            panel.update_progress([summary] + picked)
+        except Exception as e:
+            logger.error(f"[App] Failed to poll shoe goals: {e}")
+
     async def _toggle_todo(self):
         """Toggle local UI immediately, sync to DWS in background."""
         try:
@@ -116,8 +150,8 @@ class DashboardApp(App):
         elif event.key == "r":
             asyncio.create_task(self._poll_sessions())
             asyncio.create_task(self._poll_todos())
+            asyncio.create_task(self._poll_shoe_goals())
             self.query_one("#top-attributes", TopAttributesPanel).update_mock_data()
-            self.query_one("#goal-progress", GoalProgressPanel).update_mock_data()
             event.stop()
         elif event.key == "t":
             asyncio.create_task(self._toggle_todo())
