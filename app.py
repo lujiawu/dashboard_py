@@ -4,7 +4,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Vertical, Horizontal
 from widgets.ai_agents_panel import AiAgentsPanel
 from widgets.top_attributes_panel import TopAttributesPanel
-from widgets.log_counts_panel import LogCountsPanel
+from widgets.goal_progress_panel import GoalProgressPanel
 from widgets.todo_panel import TodoPanel
 from store.sources.session_source import SessionDataSource
 from store.sources.http_session_source import HttpSessionDataSource
@@ -35,7 +35,7 @@ class DashboardApp(App):
             ),
             Horizontal(
                 TodoPanel(id="todo-list", classes="panel"),
-                LogCountsPanel(id="log-counts", classes="panel"),
+                GoalProgressPanel(id="goal-progress", classes="panel"),
                 id="middle-row"
             ),
             id="main-layout"
@@ -59,7 +59,7 @@ class DashboardApp(App):
         asyncio.create_task(self._poll_todos())
 
         self.query_one("#top-attributes", TopAttributesPanel).update_mock_data()
-        self.query_one("#log-counts", LogCountsPanel).update_mock_data()
+        self.query_one("#goal-progress", GoalProgressPanel).update_mock_data()
         logger.info("[App] on_mount end")
 
         self.notify("Press 'q' to quit, 'r' to refresh", timeout=5)
@@ -112,7 +112,7 @@ class DashboardApp(App):
             asyncio.create_task(self._poll_sessions())
             asyncio.create_task(self._poll_todos())
             self.query_one("#top-attributes", TopAttributesPanel).update_mock_data()
-            self.query_one("#log-counts", LogCountsPanel).update_mock_data()
+            self.query_one("#goal-progress", GoalProgressPanel).update_mock_data()
             event.stop()
         elif event.key == "t":
             asyncio.create_task(self._toggle_todo())

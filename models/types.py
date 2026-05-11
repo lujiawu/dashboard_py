@@ -116,6 +116,29 @@ class Todo:
         return id(self)
 
 @dataclass
+class GoalProgress:
+    name: str
+    used: float
+    goal: float
+    unit: str = ""
+    disabled: bool = False
+    icon: str = "◆"
+
+    @property
+    def percentage(self) -> float:
+        if self.goal == 0:
+            return 0.0
+        return min(100.0, (self.used / self.goal) * 100)
+
+    @property
+    def is_warning(self) -> bool:
+        return self.disabled or self.percentage >= 90
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class AppState:
     system: SystemData = field(default_factory=SystemData)
     sessions: List[AgentSession] = field(default_factory=list)

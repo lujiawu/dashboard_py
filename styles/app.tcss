@@ -28,6 +28,16 @@
     height: 100%;
 }
 
+GoalProgressPanel {
+    height: 1fr;
+    border: solid $primary;
+    padding: 0 1;
+}
+
+GoalProgressPanel > Static {
+    width: 100%;
+}
+
 DataTable {
     height: 100%;
 }
