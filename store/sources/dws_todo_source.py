@@ -13,9 +13,7 @@ class DwsTodoSource(DataSource[List[Todo]]):
         self._refresh_interval = refresh_interval
 
     async def fetch(self) -> List[Todo]:
-        pending = await self._fetch_by_status("false")
-        done = await self._fetch_by_status("true")
-        return pending + done
+        return await self._fetch_by_status("false")
 
     async def _fetch_by_status(self, status: str) -> List[Todo]:
         cmd = ["dws", "todo", "task", "list", "--page", "1", "--size", "100", "--status", status, "--format", "json"]
@@ -47,15 +45,20 @@ class DwsTodoSource(DataSource[List[Todo]]):
         except (json.JSONDecodeError, KeyError):
             return []
 
-    async def mark_done(self, task_id: str) -> bool:
-        cmd = ["dws", "todo", "task", "done", "--task-id", task_id, "--status", "true", "--format", "json"]
+    async def set_done_status(self, task_id: str, completed: bool) -> bool:
+        import logging
+        _log = logging.getLogger(__name__)
+        status = "true" if completed else "false"
+        cmd = ["dws", "todo", "task", "done", "--task-id", task_id, "--status", status, "--format", "json"]
+        _log.info(f"[DWS] set_done_status task_id={task_id} status={status}")
 
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        _, stderr = await proc.communicate()
+        stdout, stderr = await proc.communicate()
+        _log.info(f"[DWS] set_done_status rc={proc.returncode} stdout={stdout.decode().strip()!r} stderr={stderr.decode().strip()!r}")
         return proc.returncode == 0
 
     @property

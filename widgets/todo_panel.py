@@ -2,6 +2,7 @@ from datetime import datetime, timezone, timedelta
 from textual.widgets import DataTable
 from textual.events import Click
 from textual import on
+from rich.text import Text
 from models.types import Todo
 
 
@@ -35,10 +36,9 @@ class TodoPanel(DataTable):
 
     def on_mount(self):
         self.cursor_type = "row"
-        self.add_column("Status", width=7)
         self.add_column("P", width=3)
         self.add_column("Due", width=8)
-        self.add_column("Subject", width=None)
+        self._subject_key = self.add_column("Subject", width=None)
 
     @on(DataTable.RowSelected)
     def on_row_selected(self, event: DataTable.RowSelected):
@@ -48,27 +48,21 @@ class TodoPanel(DataTable):
         self._todo_map = {}
         self.clear()
         rows = self._build_rows(todos)
-        self.add_rows(rows)
+        self._row_keys = self.add_rows(rows)
 
     def _build_rows(self, todos: list[Todo]) -> list[tuple]:
         if not todos:
             return []
 
-        pending = [t for t in todos if not t.completed]
-        done = [t for t in todos if t.completed]
-
-        pending.sort(key=lambda t: (-t.priority, t.due_time if t.due_time else 2**31))
-
-        all_todos = pending + done
-        self._todo_map = {i: todo for i, todo in enumerate(all_todos)}
+        todos.sort(key=lambda t: (-t.priority, t.due_time if t.due_time else 2**31))
+        self._todo_map = {i: todo for i, todo in enumerate(todos)}
 
         rows = []
-        for todo in all_todos:
-            status = "[x]" if todo.completed else "[ ]"
+        for todo in todos:
             p_str = _priority_label(todo.priority)
             due_str = _format_due(todo.due_time)
-            subject_str = todo.subject or "?"
-            rows.append((status, p_str, due_str, subject_str))
+            subject = Text(todo.subject or "?", style="strike" if todo.completed else "")
+            rows.append((p_str, due_str, subject))
 
         return rows
 
@@ -82,9 +76,9 @@ class TodoPanel(DataTable):
         todo = self._get_todo_at_index(index)
         if todo is None:
             return None
-        todo.completed = True
-        self.update_todos(self._all_todos())
-        self.cursor_row = min(index, max(0, len(self._todo_map) - 1))
+        todo.completed = not todo.completed
+        subject = Text(todo.subject or "?", style="strike" if todo.completed else "")
+        self.update_cell(self._row_keys[index], self._subject_key, subject)
         return todo
 
     def action_copy_item(self):

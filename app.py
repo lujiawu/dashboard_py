@@ -63,7 +63,6 @@ class DashboardApp(App):
         self.shoe_source = RunningShoeSource()
 
         self.set_interval(2, self._poll_sessions)
-        self.set_interval(60, self._poll_todos)
         self.set_interval(86400, self._poll_shoe_goals)
         asyncio.create_task(self._poll_todos())
         asyncio.create_task(self._poll_shoe_goals())
@@ -132,14 +131,17 @@ class DashboardApp(App):
             logger.error(f"[App] Failed to poll shoe goals: {e}")
 
     async def _toggle_todo(self):
-        """Toggle local UI immediately, sync to DWS in background."""
+        """Toggle todo completed status, sync to DWS."""
         try:
             panel = self.query_one("#todo-list", TodoPanel)
             todo = panel.mark_local_toggle(panel.cursor_row)
             if todo is None:
                 return
-            self.notify(f"[done] {todo.subject[:60]}", timeout=2)
-            asyncio.create_task(self.dws_todo_source.mark_done(todo.id))
+            action = "done" if todo.completed else "undone"
+            logger.info(f"[Toggle] id={todo.id} subject={todo.subject[:60]} action={action}")
+            self.notify(f"[{action}] {todo.subject[:60]}", timeout=2)
+            ok = await self.dws_todo_source.set_done_status(todo.id, todo.completed)
+            logger.info(f"[Toggle] DWS result: ok={ok} id={todo.id}")
         except Exception as e:
             logger.error(f"[App] Failed to toggle todo: {e}")
 
