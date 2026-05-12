@@ -3,15 +3,17 @@ import logging
 from textual.app import App, ComposeResult
 from textual.containers import Vertical, Horizontal
 from widgets.ai_agents_panel import AiAgentsPanel
-from widgets.top_attributes_panel import TopAttributesPanel
-from widgets.goal_progress_panel import GoalProgressPanel
 from widgets.todo_panel import TodoPanel
+from widgets.goal_progress_panel import GoalProgressPanel
 from widgets.bottom_panel import BottomPanel
 from models.types import GoalProgress
 from store.sources.session_source import SessionDataSource
 from store.sources.http_session_source import HttpSessionDataSource
 from store.sources.dws_todo_source import DwsTodoSource
+from store.sources.dws_chat_source import DwsChatSource
+from store.sources.dws_calendar_source import DwsCalendarSource
 from store.sources.running_shoe_source import RunningShoeSource
+from widgets.dws_info_panel import DwsInfoPanel
 
 logging.basicConfig(
     filename="dashboard.log",
@@ -33,7 +35,7 @@ class DashboardApp(App):
         yield Vertical(
             Horizontal(
                 AiAgentsPanel(id="ai-agents", classes="panel"),
-                TopAttributesPanel(id="top-attributes", classes="panel"),
+                DwsInfoPanel(id="dws-info", classes="panel"),
                 id="top-row"
             ),
             Horizontal(
@@ -60,14 +62,15 @@ class DashboardApp(App):
         logger.info(f"[App] RemoteSessionDataSource initialized: {REMOTE_API_URL}")
 
         self.dws_todo_source = DwsTodoSource()
+        self.dws_chat_source = DwsChatSource()
+        self.dws_calendar_source = DwsCalendarSource()
         self.shoe_source = RunningShoeSource()
 
         self.set_interval(2, self._poll_sessions)
         self.set_interval(86400, self._poll_shoe_goals)
         asyncio.create_task(self._poll_todos())
         asyncio.create_task(self._poll_shoe_goals())
-
-        self.query_one("#top-attributes", TopAttributesPanel).update_mock_data()
+        asyncio.create_task(self._poll_dws_info())
         logger.info("[App] on_mount end")
 
         self.notify("Press 'q' to quit, 'r' to refresh", timeout=5)
@@ -130,6 +133,18 @@ class DashboardApp(App):
         except Exception as e:
             logger.error(f"[App] Failed to poll shoe goals: {e}")
 
+    async def _poll_dws_info(self):
+        """Fetch DWS chat + calendar concurrently and push to DwsInfoPanel."""
+        try:
+            conversations, events = await asyncio.gather(
+                self.dws_chat_source.fetch(),
+                self.dws_calendar_source.fetch(),
+            )
+            panel = self.query_one("#dws-info", DwsInfoPanel)
+            panel.update(conversations, events)
+        except Exception as e:
+            logger.error(f"[App] Failed to poll dws info: {e}")
+
     async def _toggle_todo(self):
         """Toggle todo completed status, sync to DWS."""
         try:
@@ -153,7 +168,7 @@ class DashboardApp(App):
             asyncio.create_task(self._poll_sessions())
             asyncio.create_task(self._poll_todos())
             asyncio.create_task(self._poll_shoe_goals())
-            self.query_one("#top-attributes", TopAttributesPanel).update_mock_data()
+            asyncio.create_task(self._poll_dws_info())
             event.stop()
         elif event.key == "t":
             asyncio.create_task(self._toggle_todo())

@@ -17,7 +17,7 @@
 #top-row > #ai-agents {
     width: 3fr;
 }
-#top-row > #top-attributes {
+#top-row > #dws-info {
     width: 1fr;
 }
 

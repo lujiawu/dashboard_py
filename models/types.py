@@ -116,6 +116,28 @@ class Todo:
         return id(self)
 
 @dataclass
+class ChatConversation:
+    conversation_id: str
+    title: str
+    unread_count: int
+    is_single_chat: bool = False
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class CalendarEvent:
+    event_id: str
+    title: str
+    start_time: int
+    end_time: int
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class GoalProgress:
     name: str
     used: float
