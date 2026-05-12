@@ -112,7 +112,7 @@ class GitStatusPanel(Static):
     def _format_result(self, name: str, branch_line: str, branch_name: str,
                        dirty: int, ahead: int, behind: int) -> str:
         if "..." not in branch_line:
-            return "\U0001f4a4 " + name +  "\n  " + branch_name
+            return "\U0001f4a4[red]" + name +  "\n  " + branch_name + "[/]"
 
         if dirty == 0 and ahead == 0 and behind == 0:
             return "\u2705 " + name + "\n  " + branch_name
@@ -127,7 +127,7 @@ class GitStatusPanel(Static):
 
         status_str = ", ".join(parts)
         emoji = self._pick_emoji(dirty, ahead, behind)
-        return f"{emoji} ({status_str}) {name}\n  {branch_name} "
+        return f"{emoji}[red]({status_str}) {name}\n {branch_name}[/]"
 
     @staticmethod
     def _parse_branch(branch_line: str) -> str:
