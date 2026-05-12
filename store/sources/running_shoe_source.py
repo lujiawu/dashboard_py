@@ -6,32 +6,30 @@ from store.sources.base import DataSource
 from models.types import GoalProgress
 
 
-BASE_ID = "l6Pm2Db8D42a4dNLc9Z67P6E8xLq0Ee4"
-TABLE_ID = "PmIpDEs"
-FIELD_IDS = "VCAIrdC,Dj9zate,Ayza2UW,DmagDUP"
-
-FIELD_NAME = "VCAIrdC"
-FIELD_GOAL = "Dj9zate"
-FIELD_USED = "Ayza2UW"
-FIELD_STATUS = "DmagDUP"
-
-
 class RunningShoeSource(DataSource[List[GoalProgress]]):
 
-    def __init__(self, refresh_interval: float = 86400.0):
-        self._refresh_interval = refresh_interval
+    def __init__(self, config: dict):
+        self._refresh_interval = config.get("refresh_interval", 86400.0)
+        self._base_id = config["base_id"]
+        self._table_id = config["table_id"]
+        self._field_ids = config["field_ids"]
+        self._field_name = config["field_name"]
+        self._field_goal = config["field_goal"]
+        self._field_used = config["field_used"]
+        self._field_status = config["field_status"]
+        self._filter_status = config["filter_status_value"]
 
     async def fetch(self) -> List[GoalProgress]:
         filters = json.dumps({
             "operator": "and",
-            "operands": [{"operator": "eq", "operands": [FIELD_STATUS, "在用"]}]
+            "operands": [{"operator": "eq", "operands": [self._field_status, self._filter_status]}]
         })
 
         cmd = [
             "dws", "aitable", "record", "query",
-            "--base-id", BASE_ID,
-            "--table-id", TABLE_ID,
-            "--field-ids", FIELD_IDS,
+            "--base-id", self._base_id,
+            "--table-id", self._table_id,
+            "--field-ids", self._field_ids,
             "--filters", filters,
             "--format", "json",
         ]
@@ -55,14 +53,14 @@ class RunningShoeSource(DataSource[List[GoalProgress]]):
         result: list[GoalProgress] = []
         for record in records:
             cells = record.get("cells", {})
-            name = cells.get(FIELD_NAME, "")
+            name = cells.get(self._field_name, "")
 
-            goal_raw = cells.get(FIELD_GOAL)
+            goal_raw = cells.get(self._field_goal)
             if goal_raw is None:
                 continue
             goal = float(goal_raw)
 
-            used_raw = cells.get(FIELD_USED, {})
+            used_raw = cells.get(self._field_used, {})
             used = float(used_raw.get("value", ["0"])[0]) if isinstance(used_raw, dict) else 0.0
 
             result.append(GoalProgress(name=name, used=used, goal=goal, unit="km", icon="👟"))

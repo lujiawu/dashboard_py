@@ -7,8 +7,8 @@ from models.types import ChatConversation
 
 
 class DwsChatSource(DataSource[List[ChatConversation]]):
-    def __init__(self, refresh_interval: float = 60.0):
-        self._refresh_interval = refresh_interval
+    def __init__(self, config: dict):
+        self._refresh_interval = config.get("refresh_interval", 60.0)
 
     async def fetch(self) -> List[ChatConversation]:
         cmd = ["dws", "chat", "message", "list-unread-conversations", "--format", "json"]

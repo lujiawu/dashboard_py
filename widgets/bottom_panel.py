@@ -1,7 +1,8 @@
 from pathlib import Path
 from textual.widgets import TextArea
+from config import cfg
 
-SNIPPET_FILE = Path.home() / ".config" / "dashboard" / "snippets.md"
+SNIPPET_FILE = Path(cfg["snippet_file"]).expanduser()
 
 
 class BottomPanel(TextArea):

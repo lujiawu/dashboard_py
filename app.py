@@ -14,18 +14,15 @@ from store.sources.dws_chat_source import DwsChatSource
 from store.sources.dws_calendar_source import DwsCalendarSource
 from store.sources.running_shoe_source import RunningShoeSource
 from widgets.dws_info_panel import DwsInfoPanel
+from config import cfg
 
 logging.basicConfig(
-    filename="dashboard.log",
+    filename=cfg["app"]["log_file"],
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     datefmt="%H:%M:%S"
 )
 logger = logging.getLogger(__name__)
-
-# Remote server configuration
-REMOTE_API_URL = "http://192.168.1.165:8000/"
-# REMOTE_HOST_LABEL = "macmini2014"
 
 
 class DashboardApp(App):
@@ -53,21 +50,20 @@ class DashboardApp(App):
     def on_mount(self):
         logger.info("[App] on_mount start")
 
-        self.session_source = SessionDataSource()
+        self.session_source = SessionDataSource(cfg["sessions"])
         self.session_source.start_watching()
         logger.info("[App] SessionDataSource watching started")
 
-        # Remote HTTP data source
-        self.remote_source = HttpSessionDataSource(REMOTE_API_URL)
-        logger.info(f"[App] RemoteSessionDataSource initialized: {REMOTE_API_URL}")
+        self.remote_source = HttpSessionDataSource(cfg["remote"])
+        logger.info(f"[App] RemoteSessionDataSource initialized: {cfg['remote']['api_url']}")
 
-        self.dws_todo_source = DwsTodoSource()
-        self.dws_chat_source = DwsChatSource()
-        self.dws_calendar_source = DwsCalendarSource()
-        self.shoe_source = RunningShoeSource()
+        self.dws_todo_source = DwsTodoSource(cfg["dws"]["todo"])
+        self.dws_chat_source = DwsChatSource(cfg["dws"]["chat"])
+        self.dws_calendar_source = DwsCalendarSource(cfg["dws"]["calendar"])
+        self.shoe_source = RunningShoeSource(cfg["aitable"]["running_shoe"])
 
-        self.set_interval(2, self._poll_sessions)
-        self.set_interval(86400, self._poll_shoe_goals)
+        self.set_interval(cfg["app"]["session_poll_interval"], self._poll_sessions)
+        self.set_interval(cfg["app"]["shoe_goal_poll_interval"], self._poll_shoe_goals)
         asyncio.create_task(self._poll_todos())
         asyncio.create_task(self._poll_shoe_goals())
         asyncio.create_task(self._poll_dws_info())

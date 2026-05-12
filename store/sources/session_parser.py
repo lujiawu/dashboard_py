@@ -4,16 +4,17 @@ import os
 from typing import Optional
 from pathlib import Path
 from models.types import AgentSession
+from config import cfg
 
-MAX_RETRY_ATTEMPTS = 3
-RETRY_INTERVAL_SEC = 0.5
+_MAX_RETRY_ATTEMPTS = cfg["session_parser"].get("max_retry_attempts", 3)
+_RETRY_INTERVAL_SEC = cfg["session_parser"].get("retry_interval_sec", 0.5)
 
 
 def parse_session_file(filepath: str) -> Optional[AgentSession]:
     """Load and parse a single session JSON file with retry logic.
     Compatible with both new (model-nested) and old (flat) JSON structures.
     """
-    for attempt in range(MAX_RETRY_ATTEMPTS):
+    for attempt in range(_MAX_RETRY_ATTEMPTS):
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
@@ -47,9 +48,9 @@ def parse_session_file(filepath: str) -> Optional[AgentSession]:
                 model_id=model_id,
             )
         except (PermissionError, FileNotFoundError, json.JSONDecodeError):
-            if attempt == MAX_RETRY_ATTEMPTS - 1:
+            if attempt == _MAX_RETRY_ATTEMPTS - 1:
                 return None
-            time.sleep(RETRY_INTERVAL_SEC)
+            time.sleep(_RETRY_INTERVAL_SEC)
         except Exception:
             return None
 

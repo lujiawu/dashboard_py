@@ -16,18 +16,12 @@ class SessionDataSource(DataSource[List[AgentSession]]):
     Loads all JSON files and maintains an up-to-date list of active sessions
     """
 
-    def __init__(self, 
-                 sessions_dir: str = None,
-                 refresh_interval: float = 30.0):
-        """
-        Initialize the session data source
-        :param sessions_dir: Directory containing opencode session JSON files
-        :param refresh_interval: Interval to rescan directory (backup to file events)
-        """
+    def __init__(self, config: dict):
+        sessions_dir = config.get("directory")
         if sessions_dir is None:
             sessions_dir = os.path.join(Path.home(), ".config", "opencode", "sessions")
         self.sessions_dir = str(Path(sessions_dir).expanduser())
-        self._refresh_interval = refresh_interval
+        self._refresh_interval = config.get("refresh_interval", 30.0)
         
         self.sessions: List[AgentSession] = []
         

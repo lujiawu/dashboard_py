@@ -26,8 +26,8 @@ def _parse_iso_to_ms(iso_str: str) -> int:
 
 
 class DwsCalendarSource(DataSource[List[CalendarEvent]]):
-    def __init__(self, refresh_interval: float = 300.0):
-        self._refresh_interval = refresh_interval
+    def __init__(self, config: dict):
+        self._refresh_interval = config.get("refresh_interval", 300.0)
 
     async def fetch(self) -> List[CalendarEvent]:
         start_iso, end_iso = _week_iso_range()

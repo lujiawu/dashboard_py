@@ -6,14 +6,12 @@ from store.sources.base import DataSource
 class SystemDataSource(DataSource[Dict[str, Any]]):
     """系统资源数据源，使用 psutil 采集真实系统信息"""
     
-    def __init__(self, refresh_interval: float = 2.0, top_processes_limit: int = 5):
-        """
-        初始化系统数据源
-        :param refresh_interval: 刷新间隔（秒），默认2秒
-        :param top_processes_limit: 显示的顶级进程数量，默认5个
-        """
-        self._refresh_interval = refresh_interval
-        self._top_processes_limit = top_processes_limit
+    def __init__(self, config: dict = None):
+        if config is None:
+            config = {}
+        self._refresh_interval = config.get("refresh_interval", 2.0)
+        self._top_processes_limit = config.get("top_processes_limit", 5)
+        self._disk_path = config.get("disk_path", "/")
         # 用于计算网络速度
         self._last_net_io = psutil.net_io_counters()
         self._last_net_time = psutil.time.time()
@@ -33,7 +31,7 @@ class SystemDataSource(DataSource[Dict[str, Any]]):
         memory_percent = memory.percent
         
         # 磁盘信息
-        disk = psutil.disk_usage('/')
+        disk = psutil.disk_usage(self._disk_path)
         disk_used_gb = disk.used / (1024**3)
         disk_total_gb = disk.total / (1024**3)
         disk_percent = disk.percent

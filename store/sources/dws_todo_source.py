@@ -9,14 +9,19 @@ from models.types import Todo
 class DwsTodoSource(DataSource[List[Todo]]):
     """Fetch todos from DWS CLI (dingtalk)."""
 
-    def __init__(self, refresh_interval: float = 60.0):
-        self._refresh_interval = refresh_interval
+    def __init__(self, config: dict):
+        self._refresh_interval = config.get("refresh_interval", 60.0)
+        self._page = config.get("page", 1)
+        self._page_size = config.get("page_size", 100)
+        self._executor_id = config.get("executor_id", "01455548515339212734")
 
     async def fetch(self) -> List[Todo]:
         return await self._fetch_by_status("false")
 
     async def _fetch_by_status(self, status: str) -> List[Todo]:
-        cmd = ["dws", "todo", "task", "list", "--page", "1", "--size", "100", "--status", status, "--format", "json"]
+        cmd = ["dws", "todo", "task", "list",
+               "--page", str(self._page), "--size", str(self._page_size),
+               "--status", status, "--format", "json"]
 
         proc = await asyncio.create_subprocess_exec(
             *cmd,
@@ -61,7 +66,9 @@ class DwsTodoSource(DataSource[List[Todo]]):
         _log.info(f"[DWS] set_done_status rc={proc.returncode} stdout={stdout.decode().strip()!r} stderr={stderr.decode().strip()!r}")
         return proc.returncode == 0
 
-    async def create_todo(self, title: str, executor: str = "01455548515339212734") -> bool:
+    async def create_todo(self, title: str, executor: str = None) -> bool:
+        if executor is None:
+            executor = self._executor_id
         import logging
         _log = logging.getLogger(__name__)
         cmd = ["dws", "todo", "task", "create", "--title", title, "--executors", executor, "--format", "json", "-y"]

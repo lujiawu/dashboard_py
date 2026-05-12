@@ -10,14 +10,15 @@ from models.types import AgentSession
 class HttpSessionDataSource(DataSource[List[AgentSession]]):
     """Fetch agent sessions from a remote HTTP API endpoint."""
 
-    def __init__(self, api_url: str, host_label: str = "remote"):
-        self.api_url = api_url
-        self.host_label = host_label
-        self._refresh_interval = 2.0
+    def __init__(self, config: dict):
+        self.api_url = config["api_url"]
+        self.host_label = config.get("host_label", "remote")
+        self._refresh_interval = config.get("refresh_interval", 2.0)
+        self._timeout = config.get("timeout", 5)
 
     async def fetch(self) -> List[AgentSession]:
         def _get():
-            with urllib.request.urlopen(self.api_url, timeout=5) as resp:
+            with urllib.request.urlopen(self.api_url, timeout=self._timeout) as resp:
                 return json.loads(resp.read())
 
         data = await asyncio.to_thread(_get)
