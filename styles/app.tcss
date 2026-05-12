@@ -25,8 +25,12 @@
     width: 3fr;
 }
 
-#middle-row > #goal-progress{
+#middle-row > .side-panel {
     width: 2fr;
+}
+
+.hidden {
+    display: none;
 }
 
 #bottom-row > #git-status {
@@ -48,6 +52,13 @@ GoalProgressPanel {
     padding: 0 1;
 }
 GoalProgressPanel > Static {
+    width: 100%;
+}
+
+YunxiaoPanel {
+    padding: 0 1;
+}
+YunxiaoPanel > Static {
     width: 100%;
 }
 

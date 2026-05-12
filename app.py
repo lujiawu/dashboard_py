@@ -5,6 +5,7 @@ from textual.containers import Vertical, Horizontal
 from widgets.ai_agents_panel import AiAgentsPanel
 from widgets.todo_panel import TodoPanel
 from widgets.goal_progress_panel import GoalProgressPanel
+from widgets.yunxiao_panel import YunxiaoPanel
 from widgets.bottom_panel import BottomPanel
 from models.types import GoalProgress
 from store.sources.session_source import SessionDataSource
@@ -38,7 +39,8 @@ class DashboardApp(App):
             ),
             Horizontal(
                 TodoPanel(id="todo-list", classes="panel"),
-                GoalProgressPanel(id="goal-progress", classes="panel"),
+                GoalProgressPanel(id="goal-progress", classes="panel side-panel"),
+                YunxiaoPanel(id="yunxiao", classes="panel side-panel hidden"),
                 id="middle-row"
             ),
             Horizontal(
@@ -73,7 +75,7 @@ class DashboardApp(App):
         asyncio.create_task(self._poll_git_status())
         logger.info("[App] on_mount end")
 
-        self.notify("Press 'q' to quit, 'r' to refresh", timeout=5)
+        self.notify("'q' quit, 'r' refresh, 't' toggle todo, 'g' toggle goal panel", timeout=5)
 
     async def _poll_sessions(self):
         """Fetch local + remote sessions and push to AiAgentsPanel."""
@@ -168,6 +170,22 @@ class DashboardApp(App):
         except Exception as e:
             logger.error(f"[App] Failed to toggle todo: {e}")
 
+    def _toggle_goal_panel(self):
+        goal = self.query_one("#goal-progress", GoalProgressPanel)
+        yunxiao = self.query_one("#yunxiao", YunxiaoPanel)
+        logger.info("[Toggle] goal has_class('hidden')=%s", goal.has_class("hidden"))
+        if goal.has_class("hidden"):
+            goal.remove_class("hidden")
+            yunxiao.add_class("hidden")
+            self.notify("Goal panel visible", timeout=1)
+            logger.info("[Toggle] goal visible, yunxiao hidden")
+        else:
+            goal.add_class("hidden")
+            yunxiao.remove_class("hidden")
+            self.notify("Goal panel hidden", timeout=1)
+            logger.info("[Toggle] goal hidden, yunxiao visible")
+        self.refresh(layout=True)
+
     def on_key(self, event):
         if event.key == "q":
             self.session_source.stop_watching()
@@ -180,6 +198,9 @@ class DashboardApp(App):
             event.stop()
         elif event.key == "t":
             asyncio.create_task(self._toggle_todo())
+            event.stop()
+        elif event.key == "g":
+            self._toggle_goal_panel()
             event.stop()
 
     def copy_to_clipboard(self, text: str):

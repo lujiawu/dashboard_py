@@ -45,6 +45,12 @@ _DEFAULTS = {
         "shoe_goal_poll_interval": 86400,
         "log_file": "dashboard.log",
     },
+    "yunxiao": {
+        "org_id": "",
+        "project_id": "",
+        "pat": "",
+        "refresh_interval": 300.0,
+    },
     "git": {
         "repos": [],
         "refresh_interval": 30.0,
