@@ -14,6 +14,7 @@ from store.sources.dws_chat_source import DwsChatSource
 from store.sources.dws_calendar_source import DwsCalendarSource
 from store.sources.gear_http_source import GearHttpSource
 from widgets.dws_info_panel import DwsInfoPanel
+from widgets.git_status_panel import GitStatusPanel
 from config import cfg
 
 logging.basicConfig(
@@ -41,6 +42,7 @@ class DashboardApp(App):
                 id="middle-row"
             ),
             Horizontal(
+                GitStatusPanel(id="git-status", classes="panel"),
                 BottomPanel(id="bottom-area", classes="panel"),
                 id="bottom-row"
             ),
@@ -64,9 +66,11 @@ class DashboardApp(App):
 
         self.set_interval(cfg["app"]["session_poll_interval"], self._poll_sessions)
         self.set_interval(cfg["app"]["shoe_goal_poll_interval"], self._poll_shoe_goals)
+        self.set_interval(cfg["git"]["refresh_interval"], self._poll_git_status)
         asyncio.create_task(self._poll_todos())
         asyncio.create_task(self._poll_shoe_goals())
         asyncio.create_task(self._poll_dws_info())
+        asyncio.create_task(self._poll_git_status())
         logger.info("[App] on_mount end")
 
         self.notify("Press 'q' to quit, 'r' to refresh", timeout=5)
@@ -140,6 +144,14 @@ class DashboardApp(App):
             panel.update(conversations, events)
         except Exception as e:
             logger.error(f"[App] Failed to poll dws info: {e}")
+
+    async def _poll_git_status(self):
+        logger.info("[App] _poll_git_status triggered")
+        try:
+            panel = self.query_one("#git-status", GitStatusPanel)
+            await panel.refresh_status()
+        except Exception as e:
+            logger.error(f"[App] Failed to poll git status: {e}")
 
     async def _toggle_todo(self):
         """Toggle todo completed status, sync to DWS."""

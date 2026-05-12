@@ -45,6 +45,11 @@ _DEFAULTS = {
         "shoe_goal_poll_interval": 86400,
         "log_file": "dashboard.log",
     },
+    "git": {
+        "repos": [],
+        "refresh_interval": 30.0,
+        "fetch": True,
+    },
     "snippet_file": "~/.config/dashboard/snippets.md",
     "session_parser": {
         "max_retry_attempts": 3,

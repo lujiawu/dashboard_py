@@ -29,6 +29,13 @@
     width: 2fr;
 }
 
+#bottom-row > #git-status {
+    width: 1fr;
+}
+#bottom-row > #bottom-area {
+    width: 3fr;
+}
+
 /* ===== 统一 panel 样式 ===== */
 .panel {
     border: solid $primary;
