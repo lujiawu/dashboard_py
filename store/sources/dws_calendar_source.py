@@ -10,10 +10,10 @@ from models.types import CalendarEvent
 _TZ = timezone(timedelta(hours=8))
 
 
-def _today_iso_range():
+def _week_iso_range():
     now = datetime.now(_TZ)
     start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    end = now.replace(hour=23, minute=59, second=59, microsecond=0)
+    end = (now + timedelta(days=7)).replace(hour=23, minute=59, second=59, microsecond=0)
     return start.strftime("%Y-%m-%dT%H:%M:%S+08:00"), end.strftime("%Y-%m-%dT%H:%M:%S+08:00")
 
 
@@ -30,7 +30,7 @@ class DwsCalendarSource(DataSource[List[CalendarEvent]]):
         self._refresh_interval = refresh_interval
 
     async def fetch(self) -> List[CalendarEvent]:
-        start_iso, end_iso = _today_iso_range()
+        start_iso, end_iso = _week_iso_range()
         cmd = [
             "dws", "calendar", "event", "list",
             "--start", start_iso,
@@ -53,10 +53,10 @@ class DwsCalendarSource(DataSource[List[CalendarEvent]]):
             events = data.get("result", {}).get("events", [])
             return [
                 CalendarEvent(
-                    event_id=item.get("eventId", ""),
-                    title=item.get("title", ""),
-                    start_time=_parse_iso_to_ms(item.get("start", "")),
-                    end_time=_parse_iso_to_ms(item.get("end", "")),
+                    event_id=item.get("id", ""),
+                    title=item.get("summary", ""),
+                    start_time=_parse_iso_to_ms(item.get("start", {}).get("dateTime", "")),
+                    end_time=_parse_iso_to_ms(item.get("end", {}).get("dateTime", "")),
                 )
                 for item in events
             ]

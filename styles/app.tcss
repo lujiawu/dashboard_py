@@ -18,7 +18,7 @@
     width: 3fr;
 }
 #top-row > #dws-info {
-    width: 1fr;
+    width: 2fr;
 }
 
 #middle-row > #todo-list{

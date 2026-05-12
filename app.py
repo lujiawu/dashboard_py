@@ -24,7 +24,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Remote server configuration
-REMOTE_API_URL = "http://macmini2014.local:8000/"
+REMOTE_API_URL = "http://macmini2014:8000/"
 REMOTE_HOST_LABEL = "macmini2014"
 
 
