@@ -31,18 +31,9 @@ _DEFAULTS = {
             "refresh_interval": 300.0,
         },
     },
-    "aitable": {
-        "running_shoe": {
-            "base_id": "l6Pm2Db8D42a4dNLc9Z67P6E8xLq0Ee4",
-            "table_id": "PmIpDEs",
-            "field_ids": "VCAIrdC,Dj9zate,Ayza2UW,DmagDUP",
-            "field_name": "VCAIrdC",
-            "field_goal": "Dj9zate",
-            "field_used": "Ayza2UW",
-            "field_status": "DmagDUP",
-            "filter_status_value": "在用",
-            "refresh_interval": 86400.0,
-        },
+    "gear": {
+        "api_url": "http://192.168.1.165:8000/goals/gear",
+        "refresh_interval": 86400.0,
     },
     "system": {
         "disk_path": "/",

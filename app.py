@@ -12,7 +12,7 @@ from store.sources.http_session_source import HttpSessionDataSource
 from store.sources.dws_todo_source import DwsTodoSource
 from store.sources.dws_chat_source import DwsChatSource
 from store.sources.dws_calendar_source import DwsCalendarSource
-from store.sources.running_shoe_source import RunningShoeSource
+from store.sources.gear_http_source import GearHttpSource
 from widgets.dws_info_panel import DwsInfoPanel
 from config import cfg
 
@@ -60,7 +60,7 @@ class DashboardApp(App):
         self.dws_todo_source = DwsTodoSource(cfg["dws"]["todo"])
         self.dws_chat_source = DwsChatSource(cfg["dws"]["chat"])
         self.dws_calendar_source = DwsCalendarSource(cfg["dws"]["calendar"])
-        self.shoe_source = RunningShoeSource(cfg["aitable"]["running_shoe"])
+        self.shoe_source = GearHttpSource(cfg["gear"])
 
         self.set_interval(cfg["app"]["session_poll_interval"], self._poll_sessions)
         self.set_interval(cfg["app"]["shoe_goal_poll_interval"], self._poll_shoe_goals)
