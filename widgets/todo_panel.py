@@ -3,7 +3,6 @@ from textual.widgets import DataTable, Input
 from textual.containers import Vertical
 from textual.events import Click
 from textual import on
-from rich.text import Text
 from models.types import Todo
 
 
@@ -75,7 +74,7 @@ class TodoPanel(Vertical):
         for todo in todos:
             p_str = _priority_label(todo.priority)
             due_str = _format_due(todo.due_time)
-            subject = Text(todo.subject or "?", style="strike" if todo.completed else "")
+            subject = f"✅ {todo.subject or '?'}" if todo.completed else (todo.subject or "?")
             rows.append((p_str, due_str, subject))
 
         return rows
@@ -91,7 +90,7 @@ class TodoPanel(Vertical):
         if todo is None:
             return None
         todo.completed = not todo.completed
-        subject = Text(todo.subject or "?", style="strike" if todo.completed else "")
+        subject = f"✅ {todo.subject or '?'}" if todo.completed else (todo.subject or "?")
         self._table.update_cell(self._row_keys[index], self._subject_key, subject)
         return todo
 
