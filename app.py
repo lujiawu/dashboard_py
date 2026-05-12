@@ -24,8 +24,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Remote server configuration
-REMOTE_API_URL = "http://macmini2014:8000/"
-REMOTE_HOST_LABEL = "macmini2014"
+REMOTE_API_URL = "http://192.168.1.165:8000/"
+# REMOTE_HOST_LABEL = "macmini2014"
 
 
 class DashboardApp(App):
@@ -58,7 +58,7 @@ class DashboardApp(App):
         logger.info("[App] SessionDataSource watching started")
 
         # Remote HTTP data source
-        self.remote_source = HttpSessionDataSource(REMOTE_API_URL, host_label=REMOTE_HOST_LABEL)
+        self.remote_source = HttpSessionDataSource(REMOTE_API_URL)
         logger.info(f"[App] RemoteSessionDataSource initialized: {REMOTE_API_URL}")
 
         self.dws_todo_source = DwsTodoSource()
