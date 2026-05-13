@@ -1,10 +1,13 @@
 import asyncio
 import json
+import logging
 import urllib.request
 from typing import List
 
 from store.sources.base import DataSource
 from models.types import GoalProgress
+
+logger = logging.getLogger(__name__)
 
 
 class GearHttpSource(DataSource[List[GoalProgress]]):
@@ -14,6 +17,7 @@ class GearHttpSource(DataSource[List[GoalProgress]]):
         self._refresh_interval = config.get("refresh_interval", 86400.0)
 
     async def fetch(self) -> List[GoalProgress]:
+        logger.info("[Gear] fetching %s", self._api_url)
         data = await self._fetch_json(self._api_url)
         payload = data.get("data", {})
         records = payload.get("records", [])
@@ -36,6 +40,8 @@ class GearHttpSource(DataSource[List[GoalProgress]]):
 
             result.append(GoalProgress(name=name, used=used, goal=goal, unit="km", icon="👟"))
 
+        logger.info("[Gear] got %d records: %s", len(result),
+            [f"{r.name}({r.used:.0f}/{r.goal:.0f}{r.unit})" for r in result])
         return result
 
     async def _fetch_json(self, url: str) -> dict:

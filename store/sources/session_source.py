@@ -1,4 +1,5 @@
 import os
+import logging
 from pathlib import Path
 from typing import List
 
@@ -8,6 +9,8 @@ from watchdog.events import FileSystemEventHandler, FileSystemEvent
 from store.sources.base import DataSource
 from store.sources.session_parser import parse_session_file
 from models.types import AgentSession
+
+logger = logging.getLogger(__name__)
 
 
 class SessionDataSource(DataSource[List[AgentSession]]): 
@@ -31,9 +34,12 @@ class SessionDataSource(DataSource[List[AgentSession]]):
     def start_watching(self):
         """Start watching the sessions directory for changes"""
         if os.path.isdir(self.sessions_dir):
+            logger.info("[Session] start watching: %s", self.sessions_dir)
             self.observer.schedule(self.event_handler, self.sessions_dir, recursive=False)
             self.observer.start()
             self.load_all_sessions()
+        else:
+            logger.warning("[Session] directory not found: %s", self.sessions_dir)
     
     def stop_watching(self):
         """Stop watching the directory"""
@@ -47,14 +53,15 @@ class SessionDataSource(DataSource[List[AgentSession]]):
             return
         new_sessions = []
 
-        for filename in os.listdir(self.sessions_dir):
-            if filename.endswith(".json"):
-                filepath = os.path.join(self.sessions_dir, filename)
-                session = parse_session_file(filepath)
-                if session:
-                    new_sessions.append(session)
+        json_files = [f for f in os.listdir(self.sessions_dir) if f.endswith(".json")]
+        for filename in json_files:
+            filepath = os.path.join(self.sessions_dir, filename)
+            session = parse_session_file(filepath)
+            if session:
+                new_sessions.append(session)
 
         self.sessions = new_sessions
+        logger.info("[Session] loaded %d sessions from %d files", len(new_sessions), len(json_files))
     
     async def fetch(self) -> List[AgentSession]:
         """Return the currently loaded sessions"""
@@ -77,25 +84,25 @@ class SessionFileHandler(FileSystemEventHandler):
         """Handle when a session file is created"""
         if event.is_directory:
             return
-            
+
         if event.src_path.endswith(".json"):
-            # Reload all sessions when a new one appears
+            logger.info("[Session] file created: %s", event.src_path)
             self.session_source.load_all_sessions()
-    
+
     def on_modified(self, event: FileSystemEvent):
         """Handle when a session file is modified"""
         if event.is_directory:
             return
-            
+
         if event.src_path.endswith(".json"):
-            # Reload all sessions when any file changes
+            logger.info("[Session] file modified: %s", event.src_path)
             self.session_source.load_all_sessions()
-    
+
     def on_deleted(self, event: FileSystemEvent):
         """Handle when a session file is deleted"""
         if event.is_directory:
             return
-            
+
         if event.src_path.endswith(".json"):
-            # Reload all sessions when a file is removed
+            logger.info("[Session] file deleted: %s", event.src_path)
             self.session_source.load_all_sessions()

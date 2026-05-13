@@ -14,6 +14,7 @@ from store.sources.dws_todo_source import DwsTodoSource
 from store.sources.dws_chat_source import DwsChatSource
 from store.sources.dws_calendar_source import DwsCalendarSource
 from store.sources.gear_http_source import GearHttpSource
+from store.sources.yunxiao_source import YunxiaoSource
 from widgets.dws_info_panel import DwsInfoPanel
 from widgets.git_status_panel import GitStatusPanel
 from config import cfg
@@ -65,17 +66,27 @@ class DashboardApp(App):
         self.dws_chat_source = DwsChatSource(cfg["dws"]["chat"])
         self.dws_calendar_source = DwsCalendarSource(cfg["dws"]["calendar"])
         self.shoe_source = GearHttpSource(cfg["gear"])
+        self.yunxiao_source = YunxiaoSource(cfg["yunxiao"])
 
-        self.set_interval(cfg["app"]["session_poll_interval"], self._poll_sessions)
-        self.set_interval(cfg["app"]["shoe_goal_poll_interval"], self._poll_shoe_goals)
+        asyncio.create_task(self._refresh_all())
+
+        self.set_interval(self.remote_source.refresh_interval, self._poll_sessions)
+        self.set_interval(self.dws_chat_source.refresh_interval, self._poll_dws_info)
         self.set_interval(cfg["git"]["refresh_interval"], self._poll_git_status)
-        asyncio.create_task(self._poll_todos())
-        asyncio.create_task(self._poll_shoe_goals())
-        asyncio.create_task(self._poll_dws_info())
-        asyncio.create_task(self._poll_git_status())
         logger.info("[App] on_mount end")
 
         self.notify("'q' quit, 'r' refresh, 't' toggle todo, 'g' toggle goal panel", timeout=5)
+
+    async def _refresh_all(self):
+        """Full refresh — used by startup and 'r' key."""
+        await asyncio.gather(
+            self._poll_sessions(),
+            self._poll_todos(),
+            self._poll_shoe_goals(),
+            self._poll_dws_info(),
+            self._poll_yunxiao(),
+            self._poll_git_status(),
+        )
 
     async def _poll_sessions(self):
         """Fetch local + remote sessions and push to AiAgentsPanel."""
@@ -91,6 +102,7 @@ class DashboardApp(App):
                 logger.warning(f"[App] Remote fetch failed: {e}")
 
             all_sessions = local_sessions + remote_sessions
+            logger.info("[Poll] sessions: local=%d remote=%d total=%d", len(local_sessions), len(remote_sessions), len(all_sessions))
             panel = self.query_one("#ai-agents", AiAgentsPanel)
             panel.update_sessions(all_sessions)
         except Exception as e:
@@ -100,6 +112,7 @@ class DashboardApp(App):
         """Fetch todos from DWS and push to TodoPanel."""
         try:
             todos = await self.dws_todo_source.fetch()
+            logger.info("[Poll] todos: %d items", len(todos))
             panel = self.query_one("#todo-list", TodoPanel)
             panel.update_todos(todos)
         except Exception as e:
@@ -110,10 +123,12 @@ class DashboardApp(App):
         try:
             shoes = await self.shoe_source.fetch()
             if not shoes:
+                logger.info("[Poll] shoes: 0 items")
                 return
 
             total_used = sum(s.used for s in shoes)
             total_goal = sum(s.goal for s in shoes)
+            logger.info("[Poll] shoes: %d items, total=%s/%s%s", len(shoes), total_used, total_goal, "km")
             summary = GoalProgress(
                 name="跑鞋总览", used=total_used, goal=total_goal,
                 unit="km", icon="📊"
@@ -142,10 +157,21 @@ class DashboardApp(App):
                 self.dws_chat_source.fetch(),
                 self.dws_calendar_source.fetch(),
             )
+            logger.info("[Poll] dws: %d chats, %d events", len(conversations), len(events))
             panel = self.query_one("#dws-info", DwsInfoPanel)
             panel.update(conversations, events)
         except Exception as e:
             logger.error(f"[App] Failed to poll dws info: {e}")
+
+    async def _poll_yunxiao(self):
+        """Fetch yunxiao work items and push to YunxiaoPanel."""
+        try:
+            items = await self.yunxiao_source.fetch()
+            logger.info("[Poll] yunxiao: %d items", len(items))
+            panel = self.query_one("#yunxiao", YunxiaoPanel)
+            panel.update_items(items)
+        except Exception as e:
+            logger.error(f"[App] Failed to poll yunxiao: {e}")
 
     async def _poll_git_status(self):
         logger.info("[App] _poll_git_status triggered")
@@ -191,10 +217,7 @@ class DashboardApp(App):
             self.session_source.stop_watching()
             self.exit()
         elif event.key == "r":
-            asyncio.create_task(self._poll_sessions())
-            asyncio.create_task(self._poll_todos())
-            asyncio.create_task(self._poll_shoe_goals())
-            asyncio.create_task(self._poll_dws_info())
+            asyncio.create_task(self._refresh_all())
             event.stop()
         elif event.key == "t":
             asyncio.create_task(self._toggle_todo())

@@ -41,8 +41,6 @@ _DEFAULTS = {
         "refresh_interval": 2.0,
     },
     "app": {
-        "session_poll_interval": 2,
-        "shoe_goal_poll_interval": 86400,
         "log_file": "dashboard.log",
     },
     "yunxiao": {

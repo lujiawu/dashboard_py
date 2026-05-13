@@ -1,9 +1,12 @@
 import asyncio
 import json
+import logging
 from typing import List
 
 from store.sources.base import DataSource
 from models.types import Todo
+
+logger = logging.getLogger(__name__)
 
 
 class DwsTodoSource(DataSource[List[Todo]]):
@@ -23,20 +26,23 @@ class DwsTodoSource(DataSource[List[Todo]]):
                "--page", str(self._page), "--size", str(self._page_size),
                "--status", status, "--format", "json"]
 
+        logger.info("[DwsTodo] running: %s", " ".join(cmd))
+
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, _ = await proc.communicate()
+        stdout, stderr = await proc.communicate()
 
         if proc.returncode != 0:
+            logger.warning("[DwsTodo] rc=%d stderr=%s", proc.returncode, stderr.decode(errors="replace").strip()[:200])
             return []
 
         try:
             data = json.loads(stdout.decode())
             cards = data.get("result", {}).get("todoCards", [])
-            return [
+            todos = [
                 Todo(
                     id=item.get("taskId", ""),
                     subject=item.get("subject", ""),
@@ -47,15 +53,16 @@ class DwsTodoSource(DataSource[List[Todo]]):
                 )
                 for item in cards
             ]
-        except (json.JSONDecodeError, KeyError):
+            logger.info("[DwsTodo] status=%s, got %d todos", status, len(todos))
+            return todos
+        except (json.JSONDecodeError, KeyError) as e:
+            logger.warning("[DwsTodo] parse failed: %s, raw=%s", e, stdout.decode(errors="replace").strip()[:200])
             return []
 
     async def set_done_status(self, task_id: str, completed: bool) -> bool:
-        import logging
-        _log = logging.getLogger(__name__)
         status = "true" if completed else "false"
         cmd = ["dws", "todo", "task", "done", "--task-id", task_id, "--status", status, "--format", "json"]
-        _log.info(f"[DWS] set_done_status task_id={task_id} status={status}")
+        logger.info("[DWS] set_done_status task_id=%s status=%s", task_id, status)
 
         proc = await asyncio.create_subprocess_exec(
             *cmd,
@@ -63,16 +70,15 @@ class DwsTodoSource(DataSource[List[Todo]]):
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await proc.communicate()
-        _log.info(f"[DWS] set_done_status rc={proc.returncode} stdout={stdout.decode().strip()!r} stderr={stderr.decode().strip()!r}")
+        logger.info("[DWS] set_done_status rc=%d stdout=%s stderr=%s",
+            proc.returncode, stdout.decode().strip(), stderr.decode().strip())
         return proc.returncode == 0
 
     async def create_todo(self, title: str, executor: str = None) -> bool:
         if executor is None:
             executor = self._executor_id
-        import logging
-        _log = logging.getLogger(__name__)
         cmd = ["dws", "todo", "task", "create", "--title", title, "--executors", executor, "--format", "json", "-y"]
-        _log.info(f"[DWS] create_todo title={title!r} executor={executor}")
+        logger.info("[DWS] create_todo title=%s executor=%s", title, executor)
 
         proc = await asyncio.create_subprocess_exec(
             *cmd,
@@ -80,7 +86,8 @@ class DwsTodoSource(DataSource[List[Todo]]):
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await proc.communicate()
-        _log.info(f"[DWS] create_todo rc={proc.returncode} stdout={stdout.decode().strip()!r} stderr={stderr.decode().strip()!r}")
+        logger.info("[DWS] create_todo rc=%d stdout=%s stderr=%s",
+            proc.returncode, stdout.decode().strip(), stderr.decode().strip())
         return proc.returncode == 0
 
     @property

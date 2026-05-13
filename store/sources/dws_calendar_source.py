@@ -1,10 +1,13 @@
 import asyncio
 import json
+import logging
 from datetime import datetime, timezone, timedelta
 from typing import List
 
 from store.sources.base import DataSource
 from models.types import CalendarEvent
+
+logger = logging.getLogger(__name__)
 
 
 _TZ = timezone(timedelta(hours=8))
@@ -37,21 +40,23 @@ class DwsCalendarSource(DataSource[List[CalendarEvent]]):
             "--end", end_iso,
             "--format", "json",
         ]
+        logger.info("[DwsCalendar] running: %s", " ".join(cmd))
 
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, _ = await proc.communicate()
+        stdout, stderr = await proc.communicate()
 
         if proc.returncode != 0:
+            logger.warning("[DwsCalendar] rc=%d stderr=%s", proc.returncode, stderr.decode(errors="replace").strip()[:200])
             return []
 
         try:
             data = json.loads(stdout.decode())
             events = data.get("result", {}).get("events", [])
-            return [
+            calendar_events = [
                 CalendarEvent(
                     event_id=item.get("id", ""),
                     title=item.get("summary", ""),
@@ -60,7 +65,11 @@ class DwsCalendarSource(DataSource[List[CalendarEvent]]):
                 )
                 for item in events
             ]
-        except (json.JSONDecodeError, KeyError):
+            logger.info("[DwsCalendar] range=%s..%s, got %d events",
+                start_iso[:10], end_iso[:10], len(calendar_events))
+            return calendar_events
+        except (json.JSONDecodeError, KeyError) as e:
+            logger.warning("[DwsCalendar] parse failed: %s, raw=%s", e, stdout.decode(errors="replace").strip()[:200])
             return []
 
     @property

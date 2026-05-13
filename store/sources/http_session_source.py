@@ -1,10 +1,13 @@
 import asyncio
 import json
+import logging
 import urllib.request
 from typing import List
 
 from store.sources.base import DataSource
 from models.types import AgentSession
+
+logger = logging.getLogger(__name__)
 
 
 class HttpSessionDataSource(DataSource[List[AgentSession]]):
@@ -17,11 +20,17 @@ class HttpSessionDataSource(DataSource[List[AgentSession]]):
         self._timeout = config.get("timeout", 5)
 
     async def fetch(self) -> List[AgentSession]:
+        logger.info("[RemoteSession] fetching %s (timeout=%ss)", self.api_url, self._timeout)
         def _get():
             with urllib.request.urlopen(self.api_url, timeout=self._timeout) as resp:
                 return json.loads(resp.read())
 
-        data = await asyncio.to_thread(_get)
+        try:
+            data = await asyncio.to_thread(_get)
+        except Exception as e:
+            logger.warning("[RemoteSession] fetch failed: %s", e)
+            return []
+
         sessions = []
         for item in data:
             model = item.get("model", {})
@@ -37,6 +46,7 @@ class HttpSessionDataSource(DataSource[List[AgentSession]]):
                 model_id=model.get("modelId", ""),
                 host=self.host_label,
             ))
+        logger.info("[RemoteSession] got %d items", len(sessions))
         return sessions
 
     @property
