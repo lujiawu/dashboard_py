@@ -34,6 +34,9 @@ def _pad_cjk(text: str, width: int) -> str:
 
 
 class DwsInfoPanel(VerticalScroll):
+
+    can_focus = True
+
     def compose(self):
         self._content = Static()
         yield self._content
@@ -50,7 +53,8 @@ class DwsInfoPanel(VerticalScroll):
         else:
             for c in conversations:
                 title = _pad_cjk(c.title, 30)
-                parts.append(f"  {title} {c.unread_count:>3}")
+                count_str = f"{c.unread_count}" if c.unread_count <= 999 else "999+"
+                parts.append(f"  {count_str:>3} {title}")
 
         parts.append("")
         parts.append("[bold]📅 近7日日程[/bold]")

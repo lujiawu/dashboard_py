@@ -49,24 +49,46 @@
     height: 100%;
 }
 
-.panel:focus, .panel:focus-within {
-    border: solid $text-accent;
-}
-
 #ai-agents.panel {
     border: solid $primary;
+}
+#ai-agents.panel:focus, #ai-agents.panel:focus-within {
+    border: solid $text-accent;
 }
 
 #todo-list.panel {
     border: solid $warning;
 }
+#todo-list.panel:focus, #todo-list.panel:focus-within {
+    border: solid $text-accent;
+}
 
 #dws-info.panel {
     border: solid $success;
 }
+#dws-info.panel:focus, #dws-info.panel:focus-within {
+    border: solid $text-accent;
+}
 
 #git-status.panel {
     border: solid $error;
+}
+#git-status.panel:focus, #git-status.panel:focus-within {
+    border: solid $text-accent;
+}
+
+#yunxiao.panel {
+    border: solid $secondary;
+}
+#yunxiao.panel:focus, #yunxiao.panel:focus-within {
+    border: solid $text-accent;
+}
+
+#goal-progress.panel {
+    border: solid $accent;
+}
+#goal-progress.panel:focus, #goal-progress.panel:focus-within {
+    border: solid $text-accent;
 }
 
 #bottom-area.panel {

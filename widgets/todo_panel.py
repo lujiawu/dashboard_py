@@ -49,6 +49,7 @@ class TodoPanel(Vertical):
         self._table.add_column("P", width=3)
         self._table.add_column("Due", width=8)
         self._subject_key = self._table.add_column("Subject", width=None)
+        self._table.focus()
 
     @on(DataTable.RowSelected)
     def on_row_selected(self, event: DataTable.RowSelected):

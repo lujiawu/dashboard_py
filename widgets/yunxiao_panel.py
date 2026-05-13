@@ -61,7 +61,8 @@ class YunxiaoPanel(Vertical):
     def on_mount(self):
         self._table.add_column("Type", width=4)
         self._table.add_column("Title")
-        self._table.add_column("Created", width=5)
+        created_col = self._table.add_column("Created", width=5)
+        self._table.columns[created_col].justify = "right"
         self._item_map: dict[int, Dict[str, Any]] = {}
 
     def update_items(self, items: List[Dict[str, Any]]):
