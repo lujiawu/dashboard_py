@@ -46,7 +46,7 @@ class DwsInfoPanel(VerticalScroll):
 
         parts.append("[bold]💬 未读消息[/bold]")
         if not conversations:
-            parts.append("  --")
+            parts.append("  [dim]✨ 暂无新消息[/dim]")
         else:
             for c in conversations:
                 title = _pad_cjk(c.title, 30)
@@ -55,7 +55,7 @@ class DwsInfoPanel(VerticalScroll):
         parts.append("")
         parts.append("[bold]📅 近7日日程[/bold]")
         if not events:
-            parts.append("  --")
+            parts.append("  [dim]✨ 暂无日程[/dim]")
         else:
             today = datetime.now(_TZ).date()
             for e in sorted(events, key=lambda x: x.start_time):

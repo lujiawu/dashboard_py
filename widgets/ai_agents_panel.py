@@ -25,9 +25,9 @@ def _is_recent(timestamp: str, hours: int = 24) -> bool:
 class AiAgentsPanel(DataTable):
     """Display active opencode sessions in a DataTable."""
 
-    STATUS_EMOJI = {
+    STATUS_ICON = {
         "running": "\u26a1",
-        "idle": "\u2705",
+        "idle": "[green]\u25cf[/]",
         "waiting": "\u26a1\u2753",
         "error": "\u26a1\u274c",
     }
@@ -47,7 +47,10 @@ class AiAgentsPanel(DataTable):
     def update_sessions(self, sessions: list[AgentSession]):
         rows = self._build_rows(sessions)
         self.clear()
-        self.add_rows(rows)
+        if not rows:
+            self.add_rows([("", "", "", "", "[dim]💤 近24小时无会话[/dim]")])
+        else:
+            self.add_rows(rows)
 
     def _build_rows(self, sessions: list[AgentSession]) -> list[tuple]:
         if not sessions:
@@ -62,7 +65,7 @@ class AiAgentsPanel(DataTable):
         rows = []
         for session in filtered:
             status = (session.status or "").strip().lower() or "unknown"
-            emoji = self.STATUS_EMOJI.get(status, "\u26aa")
+            icon = self.STATUS_ICON.get(status, "[dim]\u25cb[/]")
 
             agent_str = (session.agent or "—")[:7].ljust(7)
 
@@ -77,6 +80,6 @@ class AiAgentsPanel(DataTable):
             name = session.title or session.directory or "?"
             title_str = host_mark + name
 
-            rows.append((emoji, agent_str, model_str, time_str, title_str))
+            rows.append((icon, agent_str, model_str, time_str, title_str))
 
         return rows

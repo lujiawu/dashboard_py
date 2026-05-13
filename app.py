@@ -80,6 +80,7 @@ class DashboardApp(App):
 
     async def _refresh_all(self):
         """Full refresh — used by startup and 'r' key."""
+        self.notify("⟳ Refreshing...", timeout=1)
         await asyncio.gather(
             self._poll_sessions(),
             self._poll_todos(),

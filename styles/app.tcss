@@ -35,16 +35,44 @@
 
 #bottom-row > #git-status {
     width: 1fr;
+    height: auto;
 }
 #bottom-row > #bottom-area {
     width: 3fr;
+    height: 1fr;
 }
 
 /* ===== 统一 panel 样式 ===== */
 .panel {
-    border: solid $primary;
-    padding: 0 0;
+    border: solid $surface-lighten-2;
+    padding: 0 1;
     height: 100%;
+}
+
+.panel:focus, .panel:focus-within {
+    border: solid $text-accent;
+}
+
+#ai-agents.panel {
+    border: solid $primary;
+}
+
+#todo-list.panel {
+    border: solid $warning;
+}
+
+#dws-info.panel {
+    border: solid $success;
+}
+
+#git-status.panel {
+    border: solid $error;
+}
+
+#bottom-area.panel {
+    border: none;
+    background: $surface;
+    padding: 0 1;
 }
 
 /* ===== 特定 widget 微调 ===== */

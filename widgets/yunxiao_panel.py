@@ -7,10 +7,15 @@ from textual.message import Message
 from textual.widgets import DataTable
 from textual.containers import Vertical
 from textual.events import Click
+from rich.text import Text
 
 logger = logging.getLogger(__name__)
 
-_TYPE_ICON = {"Bug": "\U0001f41b", "Task": "\u2699", "Req": "\U0001f4cb"}
+_TYPE_ICON = {
+    "Bug": Text("\U0001f41b", style="red"),
+    "Task": Text("\u2699", style="blue"),
+    "Req": Text("\U0001f4cb", style="green"),
+}
 
 
 def _format_created_at(ts: int) -> str:
@@ -63,12 +68,13 @@ class YunxiaoPanel(Vertical):
         self._table.clear()
         self._item_map = {}
         if not items:
+            self._table.add_rows([(Text("", style=""), Text("📭 暂无工作项", style="dim"), Text("", style=""))])
             return
 
         rows = []
         for i, item in enumerate(items):
             self._item_map[i] = item
-            icon = _TYPE_ICON.get(item.get("type", ""), "\u2022")
+            icon = _TYPE_ICON.get(item.get("type", ""), Text("\u2022", style="dim"))
             title = item.get("title", "")
             created = _format_created_at(item.get("created_at"))
             rows.append((icon, title, created))

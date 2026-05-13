@@ -3,15 +3,16 @@ from textual.widgets import DataTable, Input
 from textual.containers import Vertical
 from textual.events import Click
 from textual import on
+from rich.text import Text
 from models.types import Todo
 
 
-def _priority_label(priority: int) -> str:
+def _priority_label(priority: int) -> Text:
     if priority >= 30:
-        return "!!!"
+        return Text("!!!", style="bold red")
     if priority == 20:
-        return "!!"
-    return "!"
+        return Text("!!", style="bold yellow")
+    return Text("!", style="dim yellow")
 
 
 def _format_due(due_time: int) -> str:
@@ -61,7 +62,10 @@ class TodoPanel(Vertical):
         self._todo_map = {}
         self._table.clear()
         rows = self._build_rows(todos)
-        self._row_keys = self._table.add_rows(rows)
+        if not rows:
+            self._row_keys = self._table.add_rows([(Text("", style=""), Text("", style=""), Text("🎉 暂无待办", style="dim"))])
+        else:
+            self._row_keys = self._table.add_rows(rows)
 
     def _build_rows(self, todos: list[Todo]) -> list[tuple]:
         if not todos:

@@ -12,6 +12,8 @@ GIT_TIMEOUT = 15
 
 
 class GitStatusPanel(Static):
+    can_focus = True
+
     def on_mount(self):
         self.border_title = "Git Status"
         self._repos = [Path(p).expanduser() for p in cfg.get("git", {}).get("repos", [])]
@@ -32,7 +34,8 @@ class GitStatusPanel(Static):
             line = await self._scan_one(repo_path)
             lines.append(line)
 
-        self.update("\n".join(lines) if lines else "No repos")
+        SEP = "  ──────────────"
+        self.update(("\n" + SEP + "\n").join(lines) if lines else "No repos")
         logger.info(f"[GitPanel] refresh_status done in {time.monotonic() - t0:.1f}s")
 
     async def _scan_one(self, repo_path: Path) -> str:
@@ -112,10 +115,10 @@ class GitStatusPanel(Static):
     def _format_result(self, name: str, branch_line: str, branch_name: str,
                        dirty: int, ahead: int, behind: int) -> str:
         if "..." not in branch_line:
-            return "\U0001f4a4[red]" + name +  "\n  " + branch_name + "[/]"
+            return f"\U0001f4a4 {name}\n  [red]{branch_name}[/]"
 
         if dirty == 0 and ahead == 0 and behind == 0:
-            return "\u2705 " + name + "\n  " + branch_name
+            return f"\u2705 {name}\n  {branch_name}"
 
         parts = []
         if dirty > 0:
@@ -127,7 +130,7 @@ class GitStatusPanel(Static):
 
         status_str = ", ".join(parts)
         emoji = self._pick_emoji(dirty, ahead, behind)
-        return f"{emoji}[red]({status_str}) {name}\n {branch_name}[/]"
+        return f"{emoji} {name}\n  {branch_name} [red]({status_str})[/]"
 
     @staticmethod
     def _parse_branch(branch_line: str) -> str:
