@@ -58,8 +58,8 @@ GoalProgressPanel > Static {
 YunxiaoPanel {
     padding: 0 1;
 }
-YunxiaoPanel > Static {
-    width: 100%;
+YunxiaoPanel DataTable {
+    height: 1fr;
 }
 
 #todo-list DataTable {

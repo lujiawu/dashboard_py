@@ -40,8 +40,8 @@ class DashboardApp(App):
             ),
             Horizontal(
                 TodoPanel(id="todo-list", classes="panel"),
-                GoalProgressPanel(id="goal-progress", classes="panel side-panel"),
-                YunxiaoPanel(id="yunxiao", classes="panel side-panel hidden"),
+                GoalProgressPanel(id="goal-progress", classes="panel side-panel hidden"),
+                YunxiaoPanel(id="yunxiao", classes="panel side-panel"),
                 id="middle-row"
             ),
             Horizontal(
@@ -72,6 +72,7 @@ class DashboardApp(App):
 
         self.set_interval(self.remote_source.refresh_interval, self._poll_sessions)
         self.set_interval(self.dws_chat_source.refresh_interval, self._poll_dws_info)
+        self.set_interval(self.yunxiao_source.refresh_interval, self._poll_yunxiao)
         self.set_interval(cfg["git"]["refresh_interval"], self._poll_git_status)
         logger.info("[App] on_mount end")
 

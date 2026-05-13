@@ -58,7 +58,6 @@ class AiAgentsPanel(DataTable):
             return []
 
         filtered.sort(key=lambda s: s.update_time or "", reverse=True)
-        filtered.sort(key=lambda s: 0 if (s.status or "").strip().lower() == "running" else 1)
 
         rows = []
         for session in filtered:

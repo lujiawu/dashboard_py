@@ -161,21 +161,6 @@ class GoalProgress:
 
 
 @dataclass
-class YunxiaoItem:
-    id: str = ""
-    title: str = ""
-    type: str = ""  # Req/Task/Bug
-    status: str = ""
-    priority: str = ""
-    assignee: str = ""
-    due_time: int = 0  # 计划完成时间（毫秒时间戳）
-    project: str = ""  # 项目名称
-
-    def __hash__(self):
-        return id(self)
-
-
-@dataclass
 class AppState:
     system: SystemData = field(default_factory=SystemData)
     sessions: List[AgentSession] = field(default_factory=list)

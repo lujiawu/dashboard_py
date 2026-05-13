@@ -1,80 +1,106 @@
 import logging
+import webbrowser
 from datetime import datetime, timezone, timedelta
+from typing import Any, Dict, List
+from textual import on
+from textual.message import Message
 from textual.widgets import DataTable
 from textual.containers import Vertical
-from models.types import YunxiaoItem
+from textual.events import Click
 
 logger = logging.getLogger(__name__)
 
-
-def _priority_label(priority: str) -> str:
-    if not priority:
-        return "-"
-    priority_map = {
-        "紧急": "!!!",
-        "高": "!!",
-        "中": "!",
-        "低": ".",
-    }
-    return priority_map.get(priority, priority)
+_TYPE_ICON = {"Bug": "\U0001f41b", "Task": "\u2699", "Req": "\U0001f4cb"}
 
 
-def _format_due(due_time: int) -> str:
-    if not due_time:
+def _format_created_at(ts: int) -> str:
+    if not ts:
         return "--"
-    try:
-        dt = datetime.fromtimestamp(due_time / 1000, tz=timezone(timedelta(hours=8)))
-        return dt.strftime("%m-%d")
-    except (ValueError, OSError):
-        return "--"
+    dt = datetime.fromtimestamp(ts / 1000, tz=timezone(timedelta(hours=8)))
+    return dt.strftime("%m-%d")
 
 
-def _type_icon(type_str: str) -> str:
-    type_map = {
-        "Req": "📋",
-        "Task": "⚙️",
-        "Bug": "🐛",
-    }
-    return type_map.get(type_str, "•")
+class _YunxiaoTable(DataTable):
+    class CtrlClicked(Message):
+        def __init__(self, row_index: int):
+            super().__init__()
+            self.row_index = row_index
+
+    class EnterPressed(Message):
+        def __init__(self, row_index: int):
+            super().__init__()
+            self.row_index = row_index
+
+    def action_select_cursor(self):
+        super().action_select_cursor()
+        logger.info("[_YunxiaoTable] action_select_cursor row=%d", self.cursor_row)
+        if self.cursor_row >= 0:
+            self.post_message(self.EnterPressed(self.cursor_row))
+
+    def on_click(self, event: Click):
+        logger.info("[_YunxiaoTable] on_click button=%d ctrl=%s", event.button, event.ctrl)
+        if event.ctrl and event.button == 1 and self.cursor_row >= 0:
+            logger.info("[_YunxiaoTable] CtrlClicked row=%d", self.cursor_row)
+            self.post_message(self.CtrlClicked(self.cursor_row))
 
 
 class YunxiaoPanel(Vertical):
 
     def compose(self):
-        self._table = DataTable()
+        self._table = _YunxiaoTable()
         self._table.zebra_stripes = True
         self._table.cursor_type = "row"
         self._table.styles.height = "1fr"
         yield self._table
 
     def on_mount(self):
-        self._table.add_column("T", width=2)
-        self._table.add_column("P", width=3)
-        self._table.add_column("Due", width=8)
-        self._table.add_column("Status", width=10)
+        self._table.add_column("Type", width=4)
         self._table.add_column("Title")
+        self._table.add_column("Created", width=5)
+        self._item_map: dict[int, Dict[str, Any]] = {}
 
-    def update_items(self, items: list[YunxiaoItem]):
+    def update_items(self, items: List[Dict[str, Any]]):
         self._table.clear()
+        self._item_map = {}
         if not items:
             return
 
-        # 按优先级和截止时间排序
-        priority_order = {"紧急": 0, "高": 1, "中": 2, "低": 3, "": 4}
-        items.sort(key=lambda x: (
-            priority_order.get(x.priority, 4),
-            x.due_time if x.due_time else 2**63,
-        ))
+        rows = []
+        for i, item in enumerate(items):
+            self._item_map[i] = item
+            icon = _TYPE_ICON.get(item.get("type", ""), "\u2022")
+            title = item.get("title", "")
+            created = _format_created_at(item.get("created_at"))
+            rows.append((icon, title, created))
 
-        for item in items:
-            type_icon = _type_icon(item.type)
-            p_label = _priority_label(item.priority)
-            due = _format_due(item.due_time)
-            status = item.status[:10] if len(item.status) > 10 else item.status
-            title = f"{item.title}"
-            if item.project:
-                title = f"[{item.project}] {title}"
+        self._table.add_rows(rows)
+        logger.info("[YunxiaoPanel] updated with %d items", len(items))
 
-            self._table.add_row(type_icon, p_label, due, status, title)
+    def _open_url(self, row_index: int):
+        item = self._item_map.get(row_index)
+        if not item:
+            logger.warning("[YunxiaoPanel] _open_url row=%d no item", row_index)
+            return
+        url = item.get("url")
+        if url:
+            logger.info("[YunxiaoPanel] _open_url row=%d url=%s", row_index, url)
+            webbrowser.open(url)
+        else:
+            logger.warning("[YunxiaoPanel] _open_url row=%d no url in item", row_index)
 
-        logger.info(f"[YunxiaoPanel] updated with {len(items)} items")
+    @on(_YunxiaoTable.EnterPressed)
+    def on_enter_pressed(self, event: _YunxiaoTable.EnterPressed):
+        logger.info("[YunxiaoPanel] EnterPressed row=%d", event.row_index)
+        event.stop()
+        self._open_url(event.row_index)
+
+    @on(_YunxiaoTable.CtrlClicked)
+    def on_ctrl_clicked(self, event: _YunxiaoTable.CtrlClicked):
+        logger.info("[YunxiaoPanel] CtrlClicked row=%d", event.row_index)
+        event.stop()
+        self._open_url(event.row_index)
+
+    @on(DataTable.RowSelected)
+    def on_row_selected(self, event: DataTable.RowSelected):
+        logger.info("[YunxiaoPanel] RowSelected row=%d", event.cursor_row)
+        event.stop()
