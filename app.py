@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import threading
 from textual.app import App, ComposeResult
 from textual.containers import Vertical, Horizontal
 from widgets.ai_agents_panel import AiAgentsPanel
@@ -57,6 +58,13 @@ class DashboardApp(App):
 
         self.session_source = SessionDataSource(cfg["sessions"])
         self.session_source.start_watching()
+        self.session_source.set_on_reload(
+            lambda: (
+                self.call_from_thread(self._push_sessions_to_tui)
+                if threading.current_thread() is not threading.main_thread()
+                else asyncio.create_task(self._push_sessions_to_tui())
+            )
+        )
         logger.info("[App] SessionDataSource watching started")
 
         self.remote_source = HttpSessionDataSource(cfg["remote"])
@@ -74,6 +82,7 @@ class DashboardApp(App):
         self.set_interval(self.dws_chat_source.refresh_interval, self._poll_dws_info)
         self.set_interval(self.yunxiao_source.refresh_interval, self._poll_yunxiao)
         self.set_interval(cfg["git"]["refresh_interval"], self._poll_git_status)
+        self.set_interval(2.0, self._compensation_poll_sessions)
         logger.info("[App] on_mount end")
 
         self.notify("'q' quit, 'r' refresh, 't' toggle todo, 'g' toggle goal panel", timeout=5)
@@ -109,6 +118,13 @@ class DashboardApp(App):
             panel.update_sessions(all_sessions)
         except Exception as e:
             logger.error(f"[App] Failed to poll sessions: {e}")
+
+    async def _push_sessions_to_tui(self):
+        """立即 push 当前 sessions 到 TUI（含本地+远程）。"""
+        await self._poll_sessions()
+
+    def _compensation_poll_sessions(self):
+        self.session_source.compensation_poll()
 
     async def _poll_todos(self):
         """Fetch todos from DWS and push to TodoPanel."""

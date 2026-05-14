@@ -2,7 +2,7 @@ import os
 import time
 import logging
 from pathlib import Path
-from typing import List
+from typing import Callable, List, Optional
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
@@ -30,43 +30,69 @@ class SessionDataSource(DataSource[List[AgentSession]]):
         self.sessions: List[AgentSession] = []
         self._last_reload_time: float = 0.0
         self._throttle_delay: float = 1.0
-        self._throttle_skipped: bool = False
-        
+        self._pending: bool = False
+        self._on_reload: Optional[Callable[[], None]] = None
+
         self.observer = Observer()
         self.event_handler = SessionFileHandler(self)
         
     def start_watching(self):
-        """Start watching the sessions directory for changes"""
         if os.path.isdir(self.sessions_dir):
             logger.info("[Session] start watching: %s", self.sessions_dir)
             self.observer.schedule(self.event_handler, self.sessions_dir, recursive=False)
             self.observer.start()
-            self.load_all_sessions()
+            self._do_reload()
         else:
             logger.warning("[Session] directory not found: %s", self.sessions_dir)
     
     def stop_watching(self):
-        """Stop watching the directory"""
         if self.observer.is_alive():
             self.observer.stop()
             self.observer.join()
     
-    def _throttled_reload(self):
+    def set_on_reload(self, callback: Optional[Callable[[], None]]):
+        self._on_reload = callback
+
+    def _schedule_reload(self):
         now = time.time()
-        elapsed = now - self._last_reload_time
-        if elapsed < self._throttle_delay:
-            self._throttle_skipped = True
+        gap = now - self._last_reload_time
+        if gap < self._throttle_delay:
+            self._pending = True
+            logger.debug("[Session] throttle skip (%.0fms < %dms), pending=True", gap * 1000, self._throttle_delay * 1000)
             return
-        had_pending = self._throttle_skipped
-        self._last_reload_time = now
-        self._throttle_skipped = False
+        logger.info("[Session] throttle fire after %.0fms", gap * 1000)
+        self._do_reload()
+
+    def _do_reload(self):
+        t0 = time.perf_counter()
+        self._cleanup_old_files()
         self.load_all_sessions()
-        if had_pending:
-            self._last_reload_time = time.time()
-            self.load_all_sessions()
+        self._last_reload_time = time.time()
+        self._pending = False
+        elapsed = (time.perf_counter() - t0) * 1000
+        logger.info("[Session] reload done in %.0fms", elapsed)
+        if self._on_reload:
+            self._on_reload()
+
+    def _cleanup_old_files(self):
+        now = time.time()
+        for f in os.listdir(self.sessions_dir):
+            if not f.endswith(".json"):
+                continue
+            fp = os.path.join(self.sessions_dir, f)
+            try:
+                if now - os.path.getmtime(fp) > 86400:
+                    os.remove(fp)
+                    logger.info("[Session] cleaned old file: %s", fp)
+            except OSError:
+                pass
+
+    def compensation_poll(self):
+        if self._pending and time.time() - self._last_reload_time >= self._throttle_delay:
+            logger.info("[Session] compensation poll fired")
+            self._do_reload()
 
     def load_all_sessions(self):
-        """Load all session JSON files from the directory"""
         if not os.path.isdir(self.sessions_dir):
             return
         new_sessions = []
@@ -82,48 +108,41 @@ class SessionDataSource(DataSource[List[AgentSession]]):
         logger.info("[Session] loaded %d sessions from %d files", len(new_sessions), len(json_files))
     
     async def fetch(self) -> List[AgentSession]:
-        """Return the currently loaded sessions"""
-        # We always return the current sessions as they are dynamically updated by the observer
         return self.sessions
 
     @property
     def refresh_interval(self) -> float:
-        """Get the interval for background tasks (not used here since we use event detection)"""
         return self._refresh_interval
 
 
 class SessionFileHandler(FileSystemEventHandler):
-    """Handles file system events for session JSON files"""
     
     def __init__(self, session_source: SessionDataSource):
         self.session_source = session_source
     
     def on_created(self, event: FileSystemEvent):
-        """Handle when a session file is created"""
         if event.is_directory:
             return
 
         src = event.src_path
         if src.endswith(".json") and os.path.basename(src).startswith("ses_"):
             logger.info("[Session] file created: %s", src)
-            self.session_source._throttled_reload()
+            self.session_source._schedule_reload()
 
     def on_modified(self, event: FileSystemEvent):
-        """Handle when a session file is modified"""
         if event.is_directory:
             return
 
         src = event.src_path
         if src.endswith(".json") and os.path.basename(src).startswith("ses_"):
             logger.info("[Session] file modified: %s", src)
-            self.session_source._throttled_reload()
+            self.session_source._schedule_reload()
 
     def on_deleted(self, event: FileSystemEvent):
-        """Handle when a session file is deleted"""
         if event.is_directory:
             return
 
         src = event.src_path
         if src.endswith(".json") and os.path.basename(src).startswith("ses_"):
             logger.info("[Session] file deleted: %s", src)
-            self.session_source._throttled_reload()
+            self.session_source._schedule_reload()
