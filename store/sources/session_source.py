@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 from pathlib import Path
 from typing import List
@@ -27,6 +28,9 @@ class SessionDataSource(DataSource[List[AgentSession]]):
         self._refresh_interval = config.get("refresh_interval", 30.0)
         
         self.sessions: List[AgentSession] = []
+        self._last_reload_time: float = 0.0
+        self._throttle_delay: float = 1.0
+        self._throttle_skipped: bool = False
         
         self.observer = Observer()
         self.event_handler = SessionFileHandler(self)
@@ -47,6 +51,20 @@ class SessionDataSource(DataSource[List[AgentSession]]):
             self.observer.stop()
             self.observer.join()
     
+    def _throttled_reload(self):
+        now = time.time()
+        elapsed = now - self._last_reload_time
+        if elapsed < self._throttle_delay:
+            self._throttle_skipped = True
+            return
+        had_pending = self._throttle_skipped
+        self._last_reload_time = now
+        self._throttle_skipped = False
+        self.load_all_sessions()
+        if had_pending:
+            self._last_reload_time = time.time()
+            self.load_all_sessions()
+
     def load_all_sessions(self):
         """Load all session JSON files from the directory"""
         if not os.path.isdir(self.sessions_dir):
@@ -85,24 +103,27 @@ class SessionFileHandler(FileSystemEventHandler):
         if event.is_directory:
             return
 
-        if event.src_path.endswith(".json"):
-            logger.info("[Session] file created: %s", event.src_path)
-            self.session_source.load_all_sessions()
+        src = event.src_path
+        if src.endswith(".json") and os.path.basename(src).startswith("ses_"):
+            logger.info("[Session] file created: %s", src)
+            self.session_source._throttled_reload()
 
     def on_modified(self, event: FileSystemEvent):
         """Handle when a session file is modified"""
         if event.is_directory:
             return
 
-        if event.src_path.endswith(".json"):
-            logger.info("[Session] file modified: %s", event.src_path)
-            self.session_source.load_all_sessions()
+        src = event.src_path
+        if src.endswith(".json") and os.path.basename(src).startswith("ses_"):
+            logger.info("[Session] file modified: %s", src)
+            self.session_source._throttled_reload()
 
     def on_deleted(self, event: FileSystemEvent):
         """Handle when a session file is deleted"""
         if event.is_directory:
             return
 
-        if event.src_path.endswith(".json"):
-            logger.info("[Session] file deleted: %s", event.src_path)
-            self.session_source.load_all_sessions()
+        src = event.src_path
+        if src.endswith(".json") and os.path.basename(src).startswith("ses_"):
+            logger.info("[Session] file deleted: %s", src)
+            self.session_source._throttled_reload()
