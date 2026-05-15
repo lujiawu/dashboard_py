@@ -39,8 +39,8 @@ class AiAgentsPanel(DataTable):
     def on_mount(self):
         self.cursor_type = "row"
         self.add_column("Status", width=4)
-        self.add_column("Agent", width=5)
-        self.add_column("Model", width=5)
+        self.add_column("Agent", width=8)
+        self.add_column("Model", width=20)
         self.add_column("Time", width=5)
         self.add_column("Title", width=None)
 
@@ -67,12 +67,12 @@ class AiAgentsPanel(DataTable):
             status = (session.status or "").strip().lower() or "unknown"
             icon = self.STATUS_ICON.get(status, "[dim]\u25cb[/]")
 
-            agent_str = (session.agent or "—")[:7].ljust(7)
+            agent_str = (session.agent or "—")[:8].ljust(8)
 
             model_label = session.model_id or "—"
             if "/" in model_label:
                 model_label = model_label.rsplit("/", 1)[-1]
-            model_str = model_label[:10].ljust(10)
+            model_str = model_label[:20].ljust(20)
 
             time_str = _extract_hhmm(session.update_time)
 
