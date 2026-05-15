@@ -1,6 +1,11 @@
 import asyncio
 import logging
 import threading
+import urllib.request
+
+# Bypass system proxy — Python urllib ignores Windows ProxyOverride
+urllib.request.install_opener(urllib.request.build_opener(urllib.request.ProxyHandler({})))
+
 from textual.app import App, ComposeResult
 from textual.containers import Vertical, Horizontal
 from widgets.ai_agents_panel import AiAgentsPanel
