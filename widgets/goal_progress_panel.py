@@ -22,22 +22,24 @@ class GoalProgressPanel(VerticalScroll):
             return "No data"
         return "\n".join(self._render_card(item) for item in items)
 
-    def _render_card(self, item: GoalProgress) -> str:
+    def _render_card(self, item: GoalProgress, indent: int = 0) -> str:
         pct = item.percentage
         filled = int(pct / 100 * self.BAR_WIDTH)
         is_warn = item.is_warning
+        pad = "  " * indent
 
-        bar_chars = "━" * filled + " " * (self.BAR_WIDTH - filled)
+        bar_chars = "\u2501" * filled + " " * (self.BAR_WIDTH - filled)
 
-        line1 = f"{item.icon}  {item.name}  {item.used:.0f}{item.unit}  /  {item.goal:.0f}{item.unit}"
+        name_line = f"{pad}  {item.icon}  {item.name}  {item.current:.0f}{item.unit}  /  {item.goal:.0f}{item.unit}"
         if item.disabled:
-            line1 += "  [停用]"
+            name_line += "  [\u505c\u7528]"
 
-        line2 = f"  {bar_chars} {pct:.0f}%"
+        bar_line = f"{pad}    {bar_chars} {pct:.0f}%"
+        bar_line_colored = f"[red]{bar_line}[/]" if is_warn else bar_line
 
-        if is_warn:
-            return "\n".join([
-                f"  {line1}",
-                f"  [red]{line2}[/]",
-            ])
-        return "\n".join([f"  {line1}", f"  {line2}"])
+        lines = [name_line, bar_line_colored]
+        if item.children:
+            for child in item.children:
+                lines.append(self._render_card(child, indent + 1))
+
+        return "\n".join(lines)

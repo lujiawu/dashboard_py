@@ -78,7 +78,10 @@ class SystemData:
     network_download_kb: float = 0.0
     process_count: int = 0
     boot_time: float = 0.0
-    top_processes: list = field(default_factory=list)  # top N 进程信息
+    top_processes: list = field(default_factory=list)
+
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
@@ -140,17 +143,18 @@ class CalendarEvent:
 @dataclass
 class GoalProgress:
     name: str
-    used: float
+    current: float
     goal: float
     unit: str = ""
     disabled: bool = False
     icon: str = "◆"
+    children: List["GoalProgress"] = field(default_factory=list)
 
     @property
     def percentage(self) -> float:
         if self.goal == 0:
             return 0.0
-        return min(100.0, (self.used / self.goal) * 100)
+        return min(100.0, (self.current / self.goal) * 100)
 
     @property
     def is_warning(self) -> bool:

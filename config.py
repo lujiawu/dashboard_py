@@ -31,8 +31,8 @@ _DEFAULTS = {
             "refresh_interval": 300.0,
         },
     },
-    "gear": {
-        "api_url": "http://192.168.1.165:8000/goals/gear",
+    "goals": {
+        "api_url": "http://192.168.1.165:8000/goals",
         "refresh_interval": 86400.0,
     },
     "system": {
