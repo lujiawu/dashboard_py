@@ -7,7 +7,7 @@
     height: 10;
 }
 #middle-row {
-    height: 10;
+    height: 15;
 }
 #bottom-row {
     height: 1fr;
@@ -98,11 +98,32 @@
 }
 
 /* ===== 特定 widget 微调 ===== */
-GoalProgressPanel {
+GoalTreePanel {
     padding: 0 1;
 }
-GoalProgressPanel > Static {
+
+GoalTreePanel > Static {
     width: 100%;
+}
+
+#goal-progress .goal-tree-item {
+    border-top: none;
+    padding-bottom: 0;
+    margin-bottom: 1;
+}
+
+#goal-progress CollapsibleTitle {
+    padding: 0 0;
+    height: 1;
+    text-style: none;
+}
+
+#goal-progress CollapsibleTitle:hover {
+    text-style: bold;
+}
+
+#goal-progress .goal-children {
+    margin-left: 2;
 }
 
 YunxiaoPanel {

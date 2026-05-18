@@ -19,6 +19,7 @@ class HttpGoalSource(DataSource[List[GoalProgress]]):
     async def fetch(self) -> List[GoalProgress]:
         logger.info("[HttpGoal] fetching %s", self._api_url)
         raw = await self._fetch_json(self._api_url)
+        logger.debug("[HttpGoal] raw response: %s", str(raw)[:500])
         records = raw if isinstance(raw, list) else raw.get("data", [])
         if not isinstance(records, list):
             logger.warning("[HttpGoal] unexpected response shape, expected array or {data: [...]}")
@@ -27,27 +28,27 @@ class HttpGoalSource(DataSource[List[GoalProgress]]):
         result: List[GoalProgress] = []
         for r in records:
             try:
-                obj = GoalProgress(
-                    name=r["name"],
-                    current=float(r.get("current", 0)),
-                    goal=float(r["goal"]),
-                    unit=r.get("unit", ""),
-                    disabled=r.get("disabled", False),
-                    icon=r.get("icon", "◆"),
-                    children=[GoalProgress(
-                        name=c["name"],
-                        current=float(c.get("current", 0)),
-                        goal=float(c["goal"]),
-                        unit=c.get("unit", ""),
-                        icon=c.get("icon", "◆"),
-                    ) for c in r.get("children", [])],
-                )
+                obj = self._parse_goal(r)
                 result.append(obj)
             except (KeyError, ValueError, TypeError) as e:
                 logger.warning("[HttpGoal] skip malformed record %s: %s", r, e)
 
         logger.info("[HttpGoal] got %d records", len(result))
         return result
+
+    def _parse_goal(self, d: dict) -> GoalProgress:
+        goal = GoalProgress(
+            name=d["name"],
+            current=float(d.get("current", 0)),
+            goal=float(d["goal"]),
+            unit=d.get("unit", ""),
+            disabled=d.get("disabled", False),
+            icon=d.get("icon", "◆"),
+            children=[self._parse_goal(c) for c in d.get("children", [])],
+        )
+        logger.info("[HttpGoal] parsed name=%s children=%d",
+                    goal.name, len(goal.children))
+        return goal
 
     async def _fetch_json(self, url: str):
         def _get():

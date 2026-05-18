@@ -10,7 +10,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Vertical, Horizontal
 from widgets.ai_agents_panel import AiAgentsPanel
 from widgets.todo_panel import TodoPanel
-from widgets.goal_progress_panel import GoalProgressPanel
+from widgets.goal_progress_panel import GoalTreePanel
 from widgets.yunxiao_panel import YunxiaoPanel
 from widgets.bottom_panel import BottomPanel
 from store.sources.session_source import SessionDataSource
@@ -45,7 +45,7 @@ class DashboardApp(App):
             ),
             Horizontal(
                 TodoPanel(id="todo-list", classes="panel"),
-                GoalProgressPanel(id="goal-progress", classes="panel side-panel hidden"),
+                GoalTreePanel(id="goal-progress", classes="panel side-panel hidden"),
                 YunxiaoPanel(id="yunxiao", classes="panel side-panel"),
                 id="middle-row"
             ),
@@ -140,7 +140,7 @@ class DashboardApp(App):
         try:
             items = await self.goal_source.fetch()
             logger.info("[Poll] goals: %d items", len(items))
-            panel = self.query_one("#goal-progress", GoalProgressPanel)
+            panel = self.query_one("#goal-progress", GoalTreePanel)
             panel.update_progress(items)
         except Exception as e:
             logger.error(f"[App] Failed to poll goals: {e}")
@@ -189,7 +189,7 @@ class DashboardApp(App):
             logger.error(f"[App] Failed to toggle todo: {e}")
 
     def _toggle_goal_panel(self):
-        goal = self.query_one("#goal-progress", GoalProgressPanel)
+        goal = self.query_one("#goal-progress", GoalTreePanel)
         yunxiao = self.query_one("#yunxiao", YunxiaoPanel)
         logger.info("[Toggle] goal has_class('hidden')=%s", goal.has_class("hidden"))
         if goal.has_class("hidden"):
