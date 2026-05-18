@@ -13,7 +13,7 @@ def _build_title(item: GoalProgress) -> str:
     bar = "\u2501" * filled + " " * (BAR_WIDTH - filled)
     if item.is_warning:
         bar = f"[red]{bar}[/]"
-    title = f"{item.icon} {item.name}  {item.current:.0f}{item.unit}/{item.goal:.0f}{item.unit}  {bar} {pct:.0f}%"
+    title = f"{item.icon} {item.name}  {item.current:.0f}{item.unit}/{item.goal:.0f}{item.unit}\n    {bar} {pct:.0f}%"
     if item.disabled:
         title += "  [\u505c\u7528]"
     return title

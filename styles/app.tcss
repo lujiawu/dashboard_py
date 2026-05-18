@@ -114,7 +114,7 @@ GoalTreePanel > Static {
 
 #goal-progress CollapsibleTitle {
     padding: 0 0;
-    height: 1;
+    height: auto;
     text-style: none;
 }
 
