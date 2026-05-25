@@ -87,6 +87,7 @@ class DashboardApp(App):
         self.set_interval(self.yunxiao_source.refresh_interval, self._poll_yunxiao)
         self.set_interval(cfg["git"]["refresh_interval"], self._poll_git_status)
         self.set_interval(2.0, self._compensation_poll_sessions)
+        self.set_interval(cfg["goals"]["refresh_interval"], self._poll_goals)
         logger.info("[App] on_mount end")
 
         self.notify("'q' quit, 'r' refresh, 't' toggle todo, 'g' toggle goal panel", timeout=5)
@@ -144,6 +145,7 @@ class DashboardApp(App):
             panel.update_progress(items)
         except Exception as e:
             logger.error(f"[App] Failed to poll goals: {e}")
+            self.notify(f"[red]Goal fetch failed: {e}[/]", timeout=3)
 
     async def _poll_dws_info(self):
         try:

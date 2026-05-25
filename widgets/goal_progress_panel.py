@@ -30,7 +30,7 @@ def _build_children_text(children: list[GoalProgress]) -> str:
 class GoalTreePanel(VerticalScroll):
 
     def compose(self):
-        yield Static(id="content", expand=True)
+        yield Static("[dim]暂无目标数据[/]", id="content", expand=True)
 
     def update_progress(self, items: list[GoalProgress]):
         logger.info("[GoalPanel] update_progress with %d items", len(items))
