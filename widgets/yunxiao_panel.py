@@ -51,6 +51,8 @@ class _YunxiaoTable(DataTable):
 
 class YunxiaoPanel(Vertical):
 
+    _last_fp: int = 0
+
     def compose(self):
         self._table = _YunxiaoTable()
         self._table.zebra_stripes = True
@@ -66,6 +68,10 @@ class YunxiaoPanel(Vertical):
         self._item_map: dict[int, Dict[str, Any]] = {}
 
     def update_items(self, items: List[Dict[str, Any]]):
+        fp = hash(str(items))
+        if fp == self._last_fp:
+            return
+        self._last_fp = fp
         self._table.clear()
         self._item_map = {}
         if not items:

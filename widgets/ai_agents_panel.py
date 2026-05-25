@@ -32,6 +32,8 @@ class AiAgentsPanel(DataTable):
         "error": "\u26a1\u274c",
     }
 
+    _last_fp: int = 0
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.zebra_stripes = True
@@ -45,6 +47,10 @@ class AiAgentsPanel(DataTable):
         self.add_column("Title", width=None)
 
     def update_sessions(self, sessions: list[AgentSession]):
+        fp = hash(str(sessions))
+        if fp == self._last_fp:
+            return
+        self._last_fp = fp
         rows = self._build_rows(sessions)
         self.clear()
         if not rows:

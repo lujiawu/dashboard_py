@@ -29,10 +29,16 @@ def _build_children_text(children: list[GoalProgress]) -> str:
 
 class GoalTreePanel(VerticalScroll):
 
+    _last_fp: int = 0
+
     def compose(self):
         yield Static("[dim]暂无目标数据[/]", id="content", expand=True)
 
     def update_progress(self, items: list[GoalProgress]):
+        fp = hash(str(items))
+        if fp == self._last_fp:
+            return
+        self._last_fp = fp
         logger.info("[GoalPanel] update_progress with %d items", len(items))
         self.query(".goal-tree-item").remove()
         no_data = self.query_one("#content", Static)
