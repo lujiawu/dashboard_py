@@ -17,6 +17,7 @@ class GitStatusPanel(Static):
     def on_mount(self):
         self.border_title = "Git Status"
         self._repos = [Path(p).expanduser() for p in cfg.get("git", {}).get("repos", [])]
+        self._last_output: str = ""
         if not self._repos:
             self.update("No repos configured.\nAdd paths in git.repos config.")
         else:
@@ -35,7 +36,12 @@ class GitStatusPanel(Static):
             lines.append(line)
 
         SEP = "  ──────────────"
-        self.update(("\n" + SEP + "\n").join(lines) if lines else "No repos")
+        output = ("\n" + SEP + "\n").join(lines) if lines else "No repos"
+        if output == self._last_output:
+            logger.info(f"[GitPanel] refresh_status unchanged, skip update ({time.monotonic() - t0:.1f}s)")
+            return
+        self._last_output = output
+        self.update(output)
         logger.info(f"[GitPanel] refresh_status done in {time.monotonic() - t0:.1f}s")
 
     async def _scan_one(self, repo_path: Path) -> str:

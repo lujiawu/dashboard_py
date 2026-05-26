@@ -31,6 +31,8 @@ def _parse_iso_to_ms(iso_str: str) -> int:
 class DwsCalendarSource(DataSource[List[CalendarEvent]]):
     def __init__(self, config: dict):
         self._refresh_interval = config.get("refresh_interval", 300.0)
+        self._last_fp: int = 0
+        self._cached: List[CalendarEvent] = []
 
     async def fetch(self) -> List[CalendarEvent]:
         start_iso, end_iso = _week_iso_range()
@@ -51,7 +53,12 @@ class DwsCalendarSource(DataSource[List[CalendarEvent]]):
 
         if proc.returncode != 0:
             logger.warning("[DwsCalendar] rc=%d stderr=%s", proc.returncode, stderr.decode(errors="replace").strip()[:200])
-            return []
+            return self._cached
+
+        fp = hash(stdout)
+        if fp == self._last_fp:
+            return self._cached
+        self._last_fp = fp
 
         try:
             data = json.loads(stdout.decode())
@@ -65,12 +72,13 @@ class DwsCalendarSource(DataSource[List[CalendarEvent]]):
                 )
                 for item in events
             ]
+            self._cached = calendar_events
             logger.info("[DwsCalendar] range=%s..%s, got %d events",
                 start_iso[:10], end_iso[:10], len(calendar_events))
             return calendar_events
         except (json.JSONDecodeError, KeyError) as e:
             logger.warning("[DwsCalendar] parse failed: %s, raw=%s", e, stdout.decode(errors="replace").strip()[:200])
-            return []
+            return self._cached
 
     @property
     def refresh_interval(self) -> float:

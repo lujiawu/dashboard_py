@@ -15,12 +15,20 @@ class HttpGoalSource(DataSource[List[GoalProgress]]):
     def __init__(self, config: dict):
         self._api_url = config["api_url"]
         self._refresh_interval = config.get("refresh_interval", 86400.0)
+        self._last_fp: int = 0
+        self._cached: List[GoalProgress] = []
 
     async def fetch(self) -> List[GoalProgress]:
         logger.info("[HttpGoal] fetching %s", self._api_url)
-        raw = await self._fetch_json(self._api_url)
-        logger.debug("[HttpGoal] raw response: %s", str(raw)[:500])
-        records = raw if isinstance(raw, list) else raw.get("data", [])
+        raw = await self._fetch_raw(self._api_url)
+        fp = hash(raw)
+        if fp == self._last_fp:
+            return self._cached
+        self._last_fp = fp
+
+        data = json.loads(raw)
+        logger.debug("[HttpGoal] raw response: %s", str(data)[:500])
+        records = data if isinstance(data, list) else data.get("data", [])
         if not isinstance(records, list):
             logger.warning("[HttpGoal] unexpected response shape, expected array or {data: [...]}")
             return []
@@ -33,6 +41,7 @@ class HttpGoalSource(DataSource[List[GoalProgress]]):
             except (KeyError, ValueError, TypeError) as e:
                 logger.warning("[HttpGoal] skip malformed record %s: %s", r, e)
 
+        self._cached = result
         logger.info("[HttpGoal] got %d records", len(result))
         return result
 
@@ -50,10 +59,10 @@ class HttpGoalSource(DataSource[List[GoalProgress]]):
                     goal.name, len(goal.children))
         return goal
 
-    async def _fetch_json(self, url: str):
+    async def _fetch_raw(self, url: str):
         def _get():
             with urllib.request.urlopen(url, timeout=10) as resp:
-                return json.loads(resp.read())
+                return resp.read()
 
         return await asyncio.to_thread(_get)
 

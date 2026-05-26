@@ -34,7 +34,7 @@ class TodoPanel(Vertical):
         super().__init__(**kwargs)
         self._todo_map: dict[int, Todo] = {}
         self._row_keys = []
-        self._last_fp: int = 0
+        self._last_todos: list[Todo] | None = None
 
     def compose(self):
         self._table = DataTable()
@@ -61,10 +61,9 @@ class TodoPanel(Vertical):
         return self._table.cursor_row
 
     def update_todos(self, todos: list[Todo]):
-        fp = hash(str(todos))
-        if fp == self._last_fp:
+        if todos is self._last_todos:
             return
-        self._last_fp = fp
+        self._last_todos = todos
         self._todo_map = {}
         self._table.clear()
         rows = self._build_rows(todos)
@@ -100,7 +99,6 @@ class TodoPanel(Vertical):
         if todo is None:
             return None
         todo.completed = not todo.completed
-        self._last_fp = 0
         subject = f"✅ {todo.subject or '?'}" if todo.completed else (todo.subject or "?")
         self._table.update_cell(self._row_keys[index], self._subject_key, subject)
         return todo

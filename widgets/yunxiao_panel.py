@@ -51,13 +51,12 @@ class _YunxiaoTable(DataTable):
 
 class YunxiaoPanel(Vertical):
 
-    _last_fp: int = 0
-
     def compose(self):
         self._table = _YunxiaoTable()
         self._table.zebra_stripes = True
         self._table.cursor_type = "row"
         self._table.styles.height = "1fr"
+        self._last_items: List[Dict[str, Any]] | None = None
         yield self._table
 
     def on_mount(self):
@@ -68,10 +67,9 @@ class YunxiaoPanel(Vertical):
         self._item_map: dict[int, Dict[str, Any]] = {}
 
     def update_items(self, items: List[Dict[str, Any]]):
-        fp = hash(str(items))
-        if fp == self._last_fp:
+        if items is self._last_items:
             return
-        self._last_fp = fp
+        self._last_items = items
         self._table.clear()
         self._item_map = {}
         if not items:

@@ -18,19 +18,27 @@ class HttpSessionDataSource(DataSource[List[AgentSession]]):
         self.host_label = config.get("host_label", "remote")
         self._refresh_interval = config.get("refresh_interval", 2.0)
         self._timeout = config.get("timeout", 5)
+        self._last_fp: int = 0
+        self._cached: List[AgentSession] = []
 
     async def fetch(self) -> List[AgentSession]:
         logger.info("[RemoteSession] fetching %s (timeout=%ss)", self.api_url, self._timeout)
         def _get():
             with urllib.request.urlopen(self.api_url, timeout=self._timeout) as resp:
-                return json.loads(resp.read())
+                raw = resp.read()
+                return hash(raw), raw
 
         try:
-            data = await asyncio.to_thread(_get)
+            fp, raw = await asyncio.to_thread(_get)
         except Exception as e:
             logger.warning("[RemoteSession] fetch failed: %s", e)
-            return []
+            return self._cached
 
+        if fp == self._last_fp:
+            return self._cached
+        self._last_fp = fp
+
+        data = json.loads(raw)
         sessions = []
         for item in data:
             model = item.get("model", {})
@@ -46,6 +54,7 @@ class HttpSessionDataSource(DataSource[List[AgentSession]]):
                 model_id=model.get("modelId", ""),
                 host=self.host_label,
             ))
+        self._cached = sessions
         logger.info("[RemoteSession] got %d items", len(sessions))
         return sessions
 

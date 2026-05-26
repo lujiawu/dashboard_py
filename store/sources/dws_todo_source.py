@@ -17,6 +17,8 @@ class DwsTodoSource(DataSource[List[Todo]]):
         self._page = config.get("page", 1)
         self._page_size = config.get("page_size", 100)
         self._executor_id = config.get("executor_id", "01455548515339212734")
+        self._last_fp: int = 0
+        self._cached: List[Todo] = []
 
     async def fetch(self) -> List[Todo]:
         return await self._fetch_by_status("false")
@@ -37,7 +39,12 @@ class DwsTodoSource(DataSource[List[Todo]]):
 
         if proc.returncode != 0:
             logger.warning("[DwsTodo] rc=%d stderr=%s", proc.returncode, stderr.decode(errors="replace").strip()[:200])
-            return []
+            return self._cached
+
+        fp = hash(stdout)
+        if fp == self._last_fp:
+            return self._cached
+        self._last_fp = fp
 
         try:
             data = json.loads(stdout.decode())
@@ -53,11 +60,12 @@ class DwsTodoSource(DataSource[List[Todo]]):
                 )
                 for item in cards
             ]
+            self._cached = todos
             logger.info("[DwsTodo] status=%s, got %d todos", status, len(todos))
             return todos
         except (json.JSONDecodeError, KeyError) as e:
             logger.warning("[DwsTodo] parse failed: %s, raw=%s", e, stdout.decode(errors="replace").strip()[:200])
-            return []
+            return self._cached
 
     async def set_done_status(self, task_id: str, completed: bool) -> bool:
         status = "true" if completed else "false"

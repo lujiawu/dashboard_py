@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 class DwsChatSource(DataSource[List[ChatConversation]]):
     def __init__(self, config: dict):
         self._refresh_interval = config.get("refresh_interval", 60.0)
+        self._last_fp: int = 0
+        self._cached: List[ChatConversation] = []
 
     async def fetch(self) -> List[ChatConversation]:
         cmd = ["dws", "chat", "message", "list-unread-conversations", "--format", "json"]
@@ -26,7 +28,12 @@ class DwsChatSource(DataSource[List[ChatConversation]]):
 
         if proc.returncode != 0:
             logger.warning("[DwsChat] rc=%d stderr=%s", proc.returncode, stderr.decode(errors="replace").strip()[:200])
-            return []
+            return self._cached
+
+        fp = hash(stdout)
+        if fp == self._last_fp:
+            return self._cached
+        self._last_fp = fp
 
         try:
             data = json.loads(stdout.decode())
@@ -40,12 +47,13 @@ class DwsChatSource(DataSource[List[ChatConversation]]):
                 )
                 for item in convs
             ]
+            self._cached = conversations
             logger.info("[DwsChat] got %d conversations (unread: %d)",
                 len(conversations), sum(c.unread_count for c in conversations))
             return conversations
         except (json.JSONDecodeError, KeyError) as e:
             logger.warning("[DwsChat] parse failed: %s, raw=%s", e, stdout.decode(errors="replace").strip()[:200])
-            return []
+            return self._cached
 
     @property
     def refresh_interval(self) -> float:
