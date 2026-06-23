@@ -1,0 +1,27 @@
+[project]
+name = "dashboard-py"
+version = "0.1.0"
+description = "Textual-based terminal dashboard"
+requires-python = ">=3.12"
+dependencies = [
+    "textual==8.2.4",
+    "rich==15.0.0",
+    "psutil==7.2.2",
+    "watchdog==4.0.1",
+]
+
+[project.scripts]
+dashboard = "app:main"
+
+[tool.setuptools]
+py-modules = ["app", "config"]
+
+[tool.setuptools.packages.find]
+include = ["store*", "widgets*", "models*", "docs*", "styles*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.tcss"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

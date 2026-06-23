@@ -47,6 +47,7 @@ _DEFAULTS = {
         "org_id": "",
         "project_id": "",
         "pat": "",
+        "categories": ["Task", "Bug"],
         "refresh_interval": 300.0,
     },
     "git": {

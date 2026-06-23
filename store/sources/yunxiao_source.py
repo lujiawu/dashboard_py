@@ -11,9 +11,6 @@ from store.sources.base import DataSource
 
 logger = logging.getLogger(__name__)
 
-ORG_ID = "681f24490bd1e62a78d91516"
-PROJECT_ID = "c121cbdbe805eb951e4c8cd254"
-
 BUG_TYPES = [
     "37da3a07df4d08aef2e3b393",
     "17d33cb4ff7f985dc097626969",
@@ -116,8 +113,11 @@ class McpClient:
 
 class YunxiaoSource(DataSource[List[Dict[str, Any]]]):
     def __init__(self, config: dict):
-        self._refresh_interval = config.get("refresh_interval", 300.0)
+        self._org_id = config.get("org_id", "")
+        self._project_ids = [p.strip() for p in config.get("project_id", "").split(",") if p.strip()] or [""]
+        self._categories = config.get("categories", ["Task", "Bug"])
         self._token = config.get("pat", "")
+        self._refresh_interval = config.get("refresh_interval", 300.0)
         self._executor = ThreadPoolExecutor(max_workers=1)
 
     async def fetch(self) -> List[Dict[str, Any]]:
@@ -142,21 +142,27 @@ class YunxiaoSource(DataSource[List[Dict[str, Any]]]):
         try:
             client.start()
             all_items: List[Dict[str, Any]] = []
-            for cat, tids, default_st in CATEGORY_CONFIGS:
-                logger.info("[Yunxiao] 查询 %s ...", cat)
-                result = self._search(client, cat, tids, default_st)
-                items = self._parse_result(result, cat)
-                logger.info("[Yunxiao] %s: %d items", cat, len(items))
-                all_items.extend(items)
+            for cat_name in self._categories:
+                cat_config = next((c for c in CATEGORY_CONFIGS if c[0] == cat_name), None)
+                if cat_config is None:
+                    logger.warning("[Yunxiao] 未知分类: %s", cat_name)
+                    continue
+                cat, tids, default_st = cat_config
+                for proj_id in self._project_ids:
+                    logger.info("[Yunxiao] 查询 %s %s ...", proj_id, cat)
+                    result = self._search(client, cat, tids, default_st, proj_id)
+                    items = self._parse_result(result, cat, proj_id)
+                    logger.info("[Yunxiao] %s %s: %d items", proj_id, cat, len(items))
+                    all_items.extend(items)
         finally:
             client.stop()
         return all_items
 
-    def _search(self, client: McpClient, category: str, type_ids: list[str], status_ids: list[str]) -> dict:
+    def _search(self, client: McpClient, category: str, type_ids: list[str], status_ids: list[str], project_id: str = "") -> dict:
         args: dict[str, Any] = {
-            "organizationId": ORG_ID,
+            "organizationId": self._org_id,
             "category": category,
-            "spaceId": PROJECT_ID,
+            "spaceId": project_id or self._project_ids[0],
             "workitemType": ",".join(type_ids),
             "status": ",".join(status_ids),
             "orderBy": "gmtCreate",
@@ -167,7 +173,7 @@ class YunxiaoSource(DataSource[List[Dict[str, Any]]]):
         }
         return client.call_tool("search_workitems", args)
 
-    def _parse_result(self, result: dict, category: str) -> List[Dict[str, Any]]:
+    def _parse_result(self, result: dict, category: str, project_id: str = "") -> List[Dict[str, Any]]:
         content = result.get("content", [])
         if not content:
             return []
@@ -177,14 +183,15 @@ class YunxiaoSource(DataSource[List[Dict[str, Any]]]):
         except json.JSONDecodeError:
             return []
         items = data.get("items", [])
-        return [self._format(item, category) for item in items]
+        return [self._format(item, category, project_id) for item in items]
 
-    def _format(self, item: dict, category: str) -> Dict[str, Any]:
+    def _format(self, item: dict, category: str, project_id: str = "") -> Dict[str, Any]:
         status = item.get("status", {}) or {}
         assignee = item.get("assignedTo", {}) or {}
         sn = item.get("serialNumber", "")
         item_id = item.get("id", "")
-        url = f"https://devops.aliyun.com/projex/project/{PROJECT_ID}/{category.lower()}/{item_id}"
+        pid = project_id or self._project_ids[0]
+        url = f"https://devops.aliyun.com/projex/project/{pid}/{category.lower()}/{item_id}"
         return {
             "id": item_id,
             "sn": sn,

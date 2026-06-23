@@ -230,7 +230,11 @@ class DashboardApp(App):
             pass
 
 
-if __name__ == "__main__":
+def main():
     import sys
     sys.argv.append("-r")
     DashboardApp().run()
+
+
+if __name__ == "__main__":
+    main()
