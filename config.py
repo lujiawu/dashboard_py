@@ -22,6 +22,7 @@ _DEFAULTS = {
             "executor_id": "01455548515339212734",
             "page": 1,
             "page_size": 100,
+            "timeout": 60,
             "refresh_interval": 60.0,
         },
         "chat": {

@@ -13,6 +13,7 @@ dependencies = [
 [project.scripts]
 dashboard = "app:main"
 yunxiao = "cli.yunxiao:main"
+dws-todo-list = "cli.dws_todo:main"
 
 [tool.setuptools]
 py-modules = ["app", "config"]
