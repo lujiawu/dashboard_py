@@ -12,12 +12,13 @@ dependencies = [
 
 [project.scripts]
 dashboard = "app:main"
+yunxiao = "cli.yunxiao:main"
 
 [tool.setuptools]
 py-modules = ["app", "config"]
 
 [tool.setuptools.packages.find]
-include = ["store*", "widgets*", "models*", "docs*", "styles*"]
+include = ["store*", "widgets*", "models*", "docs*", "styles*", "cli*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.tcss"]
