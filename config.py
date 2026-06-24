@@ -44,9 +44,11 @@ _DEFAULTS = {
         "log_file": "dashboard.log",
     },
     "yunxiao": {
+        "domain": "openapi-rdc.aliyuncs.com",
         "org_id": "",
         "project_id": "",
         "pat": "",
+        "user_id": "",
         "categories": ["Task", "Bug"],
         "refresh_interval": 300.0,
     },

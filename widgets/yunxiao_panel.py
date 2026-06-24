@@ -21,7 +21,7 @@ _TYPE_ICON = {
 def _format_created_at(ts: int) -> str:
     if not ts:
         return "--"
-    dt = datetime.fromtimestamp(ts / 1000, tz=timezone(timedelta(hours=8)))
+    dt = datetime.fromtimestamp(int(ts) / 1000, tz=timezone(timedelta(hours=8)))
     return dt.strftime("%m-%d")
 
 
