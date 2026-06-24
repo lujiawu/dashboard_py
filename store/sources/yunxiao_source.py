@@ -29,22 +29,38 @@ class YunxiaoSource(DataSource[List[Dict[str, Any]]]):
         self._user_id = config.get("user_id", "")
         self._categories = config.get("categories", ["Bug", "Task"])
         self._refresh_interval = config.get("refresh_interval", 300.0)
+        self._max_concurrency = max(1, int(config.get("max_concurrency", 4)))
+        self._cached: List[Dict[str, Any]] = []
 
     async def fetch(self) -> List[Dict[str, Any]]:
         if not self._token:
             logger.warning("[Yunxiao] token not configured")
             return []
 
-        all_items: List[Dict[str, Any]] = []
-        for proj_id in self._project_ids:
-            for category in self._categories:
+        jobs = [(proj_id, category) for proj_id in self._project_ids for category in self._categories]
+        if not jobs:
+            return []
+
+        sem = asyncio.Semaphore(self._max_concurrency)
+
+        async def _run(proj_id: str, category: str) -> List[Dict[str, Any]] | None:
+            async with sem:
                 try:
                     items = await self._search_project(proj_id, category)
                     logger.info("[Yunxiao] %s %s: %d items", proj_id, category, len(items))
-                    all_items.extend(items)
+                    return items
                 except Exception as e:
                     logger.error("[Yunxiao] search error: proj=%s cat=%s err=%s", proj_id, category, e)
+                    return None
+
+        results = await asyncio.gather(*(_run(proj_id, category) for proj_id, category in jobs))
+        successful = [items for items in results if items is not None]
+        if not successful:
+            return self._cached
+
+        all_items = [item for items in successful for item in items]
         all_items.sort(key=self._sort_key)
+        self._cached = all_items
         return all_items
 
     def _build_conditions(self) -> str:

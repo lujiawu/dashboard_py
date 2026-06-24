@@ -7,9 +7,11 @@ from textual.message import Message
 from textual.widgets import DataTable
 from textual.containers import Vertical
 from textual.events import Click
+from rich.cells import cell_len
 from rich.text import Text
 
 logger = logging.getLogger(__name__)
+TITLE_MAX_CELLS = 88
 
 _TYPE_ICON = {
     "Bug": Text("\U0001f41b", style="red"),
@@ -23,6 +25,19 @@ def _format_created_at(ts: int) -> str:
         return "--"
     dt = datetime.fromtimestamp(int(ts) / 1000, tz=timezone(timedelta(hours=8)))
     return dt.strftime("%m-%d")
+
+
+def _truncate_display(text: str, width: int) -> str:
+    if cell_len(text) <= width:
+        return text
+
+    result = ""
+    limit = max(0, width - 3)
+    for ch in text:
+        if cell_len(result + ch) > limit:
+            break
+        result += ch
+    return result + "..."
 
 
 class _YunxiaoTable(DataTable):
@@ -61,8 +76,8 @@ class YunxiaoPanel(Vertical):
 
     def on_mount(self):
         self._table.add_column("Type", width=4)
-        self._table.add_column("Title")
-        created_col = self._table.add_column("Created", width=5)
+        self._table.add_column("Title", width=TITLE_MAX_CELLS)
+        created_col = self._table.add_column("Date", width=5)
         self._table.columns[created_col].justify = "right"
         self._item_map: dict[int, Dict[str, Any]] = {}
 
@@ -80,7 +95,7 @@ class YunxiaoPanel(Vertical):
         for i, item in enumerate(items):
             self._item_map[i] = item
             icon = _TYPE_ICON.get(item.get("type", ""), Text("\u2022", style="dim"))
-            title = item.get("title", "")
+            title = _truncate_display(item.get("title", ""), TITLE_MAX_CELLS)
             created = _format_created_at(item.get("created_at"))
             rows.append((icon, title, created))
 

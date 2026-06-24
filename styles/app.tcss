@@ -4,10 +4,10 @@
 }
 
 #top-row {
-    height: 10;
+    height: 9;
 }
 #middle-row {
-    height: 15;
+    height: 18;
 }
 #bottom-row {
     height: 1fr;
@@ -15,7 +15,7 @@
 
 /* ===== 列宽分配 ===== */
 #top-row > #ai-agents {
-    width: 3fr;
+    width: 4fr;
 }
 #top-row > #dws-info {
     width: 2fr;
@@ -37,7 +37,7 @@
     width: 1fr;
     height: auto;
 }
-#bottom-row > #bottom-area {
+#bottom-row > #yunxiao {
     width: 3fr;
     height: 1fr;
 }
@@ -92,7 +92,7 @@
 }
 
 #bottom-area.panel {
-    border: none;
+    border: solid $surface-lighten-2;
     background: $surface;
     padding: 0 1;
 }

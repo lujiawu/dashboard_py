@@ -39,7 +39,7 @@ class AiAgentsPanel(DataTable):
 
     def on_mount(self):
         self.cursor_type = "row"
-        self.add_column("Status", width=4)
+        self.add_column("S", width=2)
         self.add_column("Agent", width=8)
         self.add_column("Model", width=20)
         self.add_column("Time", width=5)

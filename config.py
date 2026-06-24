@@ -52,6 +52,7 @@ _DEFAULTS = {
         "user_id": "",
         "categories": ["Task", "Bug"],
         "refresh_interval": 300.0,
+        "max_concurrency": 4,
     },
     "git": {
         "repos": [],

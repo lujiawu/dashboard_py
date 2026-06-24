@@ -46,12 +46,12 @@ class DashboardApp(App):
             Horizontal(
                 TodoPanel(id="todo-list", classes="panel"),
                 GoalTreePanel(id="goal-progress", classes="panel side-panel hidden"),
-                YunxiaoPanel(id="yunxiao", classes="panel side-panel"),
+                BottomPanel(id="bottom-area", classes="panel side-panel"),
                 id="middle-row"
             ),
             Horizontal(
                 GitStatusPanel(id="git-status", classes="panel"),
-                BottomPanel(id="bottom-area", classes="panel"),
+                YunxiaoPanel(id="yunxiao", classes="panel"),
                 id="bottom-row"
             ),
             id="main-layout"
@@ -160,6 +160,10 @@ class DashboardApp(App):
             logger.error(f"[App] Failed to poll dws info: {e}")
 
     async def _poll_yunxiao(self):
+        if getattr(self, "_polling_yunxiao", False):
+            logger.info("[App] Skip yunxiao poll: previous poll still running")
+            return
+        self._polling_yunxiao = True
         try:
             items = await self.yunxiao_source.fetch()
             logger.info("[Poll] yunxiao: %d items", len(items))
@@ -167,6 +171,8 @@ class DashboardApp(App):
             panel.update_items(items)
         except Exception as e:
             logger.error(f"[App] Failed to poll yunxiao: {e}")
+        finally:
+            self._polling_yunxiao = False
 
     async def _poll_git_status(self):
         logger.info("[App] _poll_git_status triggered")
@@ -192,18 +198,18 @@ class DashboardApp(App):
 
     def _toggle_goal_panel(self):
         goal = self.query_one("#goal-progress", GoalTreePanel)
-        yunxiao = self.query_one("#yunxiao", YunxiaoPanel)
+        snippet = self.query_one("#bottom-area", BottomPanel)
         logger.info("[Toggle] goal has_class('hidden')=%s", goal.has_class("hidden"))
         if goal.has_class("hidden"):
             goal.remove_class("hidden")
-            yunxiao.add_class("hidden")
+            snippet.add_class("hidden")
             self.notify("Goal panel visible", timeout=1)
-            logger.info("[Toggle] goal visible, yunxiao hidden")
+            logger.info("[Toggle] goal visible, snippet hidden")
         else:
             goal.add_class("hidden")
-            yunxiao.remove_class("hidden")
+            snippet.remove_class("hidden")
             self.notify("Goal panel hidden", timeout=1)
-            logger.info("[Toggle] goal hidden, yunxiao visible")
+            logger.info("[Toggle] goal hidden, snippet visible")
         self.refresh(layout=True)
 
     def on_key(self, event):
