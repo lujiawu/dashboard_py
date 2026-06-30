@@ -37,6 +37,10 @@
     width: 1fr;
     height: auto;
 }
+#bottom-row > #mihomo {
+    width: 1fr;
+    height: auto;
+}
 #bottom-row > #yunxiao {
     width: 3fr;
     height: 1fr;
@@ -74,6 +78,13 @@
     border: solid $error;
 }
 #git-status.panel:focus, #git-status.panel:focus-within {
+    border: solid $text-accent;
+}
+
+#mihomo.panel {
+    border: solid $success;
+}
+#mihomo.panel:focus, #mihomo.panel:focus-within {
     border: solid $text-accent;
 }
 

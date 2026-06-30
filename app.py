@@ -20,8 +20,10 @@ from store.sources.dws_chat_source import DwsChatSource
 from store.sources.dws_calendar_source import DwsCalendarSource
 from store.sources.http_goal_source import HttpGoalSource
 from store.sources.yunxiao_source import YunxiaoSource
+from store.sources.mihomo_source import MihomoSource
 from widgets.dws_info_panel import DwsInfoPanel
 from widgets.git_status_panel import GitStatusPanel
+from widgets.mihomo_panel import MihomoPanel
 from config import cfg
 
 logging.basicConfig(
@@ -51,6 +53,7 @@ class DashboardApp(App):
             ),
             Horizontal(
                 GitStatusPanel(id="git-status", classes="panel"),
+                MihomoPanel(id="mihomo", classes="panel"),
                 YunxiaoPanel(id="yunxiao", classes="panel"),
                 id="bottom-row"
             ),
@@ -79,6 +82,7 @@ class DashboardApp(App):
         self.dws_calendar_source = DwsCalendarSource(cfg["dws"]["calendar"])
         self.goal_source = HttpGoalSource(cfg["goals"])
         self.yunxiao_source = YunxiaoSource(cfg["yunxiao"])
+        self.mihomo_source = MihomoSource(cfg["mihomo"])
 
         asyncio.create_task(self._refresh_all())
 
@@ -86,6 +90,7 @@ class DashboardApp(App):
         self.set_interval(self.dws_chat_source.refresh_interval, self._poll_dws_info)
         self.set_interval(self.yunxiao_source.refresh_interval, self._poll_yunxiao)
         self.set_interval(cfg["git"]["refresh_interval"], self._poll_git_status)
+        self.set_interval(self.mihomo_source.refresh_interval, self._poll_mihomo)
         self.set_interval(2.0, self._compensation_poll_sessions)
         self.set_interval(cfg["goals"]["refresh_interval"], self._poll_goals)
         logger.info("[App] on_mount end")
@@ -101,6 +106,7 @@ class DashboardApp(App):
             self._poll_dws_info(),
             self._poll_yunxiao(),
             self._poll_git_status(),
+            self._poll_mihomo(),
         )
 
     async def _poll_sessions(self):
@@ -181,6 +187,19 @@ class DashboardApp(App):
             await panel.refresh_status()
         except Exception as e:
             logger.error(f"[App] Failed to poll git status: {e}")
+
+    async def _poll_mihomo(self):
+        if getattr(self, "_polling_mihomo", False):
+            return
+        self._polling_mihomo = True
+        try:
+            data = await self.mihomo_source.fetch()
+            panel = self.query_one("#mihomo", MihomoPanel)
+            panel.update_status(data)
+        except Exception as e:
+            logger.error(f"[App] Failed to poll mihomo: {e}")
+        finally:
+            self._polling_mihomo = False
 
     async def _toggle_todo(self):
         try:

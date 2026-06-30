@@ -30,7 +30,16 @@ except ImportError:
 # ============================================================================
 # 常量
 # ============================================================================
-ACTIVE_STATUS_STAGES = ["1", "6", "2", "7", "11", "12", "3", "13"]
+BUG_ACTIVE_STATUS = [
+    "28",        # 待确认
+    "100010",    # 处理中
+    "53e19cb99ba3b295fd38a3667b",  # 待开发自验
+    "30",        # 再次打开
+]
+TASK_ACTIVE_STATUS = [
+    "100005",    # 待处理
+    "100010",    # 处理中
+]
 TYPE_SORT = {"Bug": 0, "Task": 1}
 STATUS_SORT_ORDER = [
     "待处理", "待确认",
@@ -76,13 +85,14 @@ def search_workitems(
 ) -> List[dict]:
     url = f"https://{domain}/oapi/v1/projex/organizations/{org_id}/workitems:search"
 
+    status_ids = TASK_ACTIVE_STATUS if category == "Task" else BUG_ACTIVE_STATUS
     filters = [
         {
-            "fieldIdentifier": "statusStage",
+            "fieldIdentifier": "status",
             "operator": "CONTAINS",
-            "value": ACTIVE_STATUS_STAGES,
+            "value": status_ids,
             "toValue": None,
-            "className": "statusStage",
+            "className": "status",
             "format": "multiList",
         },
     ]

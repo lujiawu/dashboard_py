@@ -8,7 +8,16 @@ from store.sources.base import DataSource
 
 logger = logging.getLogger(__name__)
 
-ACTIVE_STATUS_STAGES = ["1", "6", "2", "7", "11", "12", "3", "13"]
+BUG_ACTIVE_STATUS = [
+    "28",        # 待确认
+    "100010",    # 处理中
+    "53e19cb99ba3b295fd38a3667b",  # 待开发自验
+    "30",        # 再次打开
+]
+TASK_ACTIVE_STATUS = [
+    "100005",    # 待处理
+    "100010",    # 处理中
+]
 TYPE_SORT = {"Bug": 0, "Task": 1}
 STATUS_SORT_ORDER = [
     "待处理", "待确认",
@@ -63,14 +72,15 @@ class YunxiaoSource(DataSource[List[Dict[str, Any]]]):
         self._cached = all_items
         return all_items
 
-    def _build_conditions(self) -> str:
+    def _build_conditions(self, category: str = "") -> str:
+        status_ids = TASK_ACTIVE_STATUS if category == "Task" else BUG_ACTIVE_STATUS
         filters = [
             {
-                "fieldIdentifier": "statusStage",
+                "fieldIdentifier": "status",
                 "operator": "CONTAINS",
-                "value": ACTIVE_STATUS_STAGES,
+                "value": status_ids,
                 "toValue": None,
-                "className": "statusStage",
+                "className": "status",
                 "format": "multiList",
             },
         ]
@@ -89,7 +99,7 @@ class YunxiaoSource(DataSource[List[Dict[str, Any]]]):
         url = f"https://{self._domain}/oapi/v1/projex/organizations/{self._org_id}/workitems:search"
         body = {
             "category": category,
-            "conditions": self._build_conditions(),
+            "conditions": self._build_conditions(category),
             "orderBy": "gmtCreate",
             "page": 1,
             "perPage": 50,

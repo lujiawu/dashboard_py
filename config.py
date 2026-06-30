@@ -59,6 +59,14 @@ _DEFAULTS = {
         "refresh_interval": 30.0,
         "fetch": True,
     },
+    "mihomo": {
+        "api_url": "http://127.0.0.1:9090",
+        "router": "192.168.1.1",
+        "route_start": "白嫖机场",
+        "iface": "",
+        "traffic_interval": 2.0,
+        "status_interval": 30.0,
+    },
     "snippet_file": "~/.config/dashboard/snippets.md",
     "session_parser": {
         "max_retry_attempts": 3,
