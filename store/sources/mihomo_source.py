@@ -10,7 +10,8 @@ from typing import Any
 from store.sources.base import DataSource
 
 
-GROUPS = ("香港自动", "日本自动", "美国OpenAI")
+GROUPS = ("香港自动", "美国OpenAI")
+HISTORY_LIMIT = 20
 
 
 def format_rate(value: float) -> str:
@@ -41,6 +42,21 @@ def selected_route(groups: dict[str, dict[str, Any]], start: str = "白嫖机场
             route.append(next_name)
             break
     return " → ".join(route) if route else "未知"
+
+
+def split_route(route: str) -> tuple[str, str]:
+    parts = [part.strip() for part in route.split("→") if part.strip()]
+    if not parts:
+        return "--", "--"
+    if len(parts) == 1:
+        return "--", parts[0]
+    return " → ".join(parts[:-1]), parts[-1]
+
+
+def append_history(history: list[int | float], value: int | float | None, limit: int = HISTORY_LIMIT) -> list[int | float]:
+    if value is None:
+        return history[-limit:]
+    return [*history, value][-limit:]
 
 
 def latest_delay(group: dict[str, Any]) -> int | None:
@@ -109,6 +125,8 @@ class MihomoSource(DataSource[dict[str, Any]]):
         self._wifi: dict[str, Any] = {}
         self._ping: dict[str, Any] = {}
         self._traffic: dict[str, Any] = {}
+        self._traffic_history = {"down": [], "up": []}
+        self._delay_history = {name: [] for name in GROUPS}
         self._error = ""
 
     @property
@@ -118,6 +136,8 @@ class MihomoSource(DataSource[dict[str, Any]]):
     async def fetch(self) -> dict[str, Any]:
         now = time.monotonic()
         self._traffic = await asyncio.to_thread(self._read_traffic)
+        self._traffic_history["down"] = append_history(self._traffic_history["down"], self._traffic.get("down"))
+        self._traffic_history["up"] = append_history(self._traffic_history["up"], self._traffic.get("up"))
         jobs = []
         if now - self._group_at >= self._status_interval:
             jobs.append(("groups", asyncio.to_thread(self._read_groups)))
@@ -133,6 +153,10 @@ class MihomoSource(DataSource[dict[str, Any]]):
             if name == "groups":
                 self._groups = result
                 self._group_at = now
+                for group_name in GROUPS:
+                    self._delay_history[group_name] = append_history(
+                        self._delay_history[group_name], latest_delay(result.get(group_name, {}))
+                    )
             elif name == "wifi":
                 self._wifi = result
                 self._wifi_at = now
@@ -149,7 +173,9 @@ class MihomoSource(DataSource[dict[str, Any]]):
         return {
             "route": selected_route(groups, self._route_start) if groups else "--",
             "delays": {name: latest_delay(groups.get(name, {})) for name in GROUPS},
+            "delay_history": self._delay_history,
             "traffic": self._traffic,
+            "traffic_history": self._traffic_history,
             "wifi": self._wifi,
             "router": self._router,
             "ping": self._ping,

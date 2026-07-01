@@ -2,11 +2,13 @@ import unittest
 
 from store.sources.mihomo_source import (
     MihomoSource,
+    append_history,
     assess_network_quality,
     format_delay,
     latest_delay,
     parse_ping,
     parse_iw_link,
+    split_route,
     selected_route,
 )
 
@@ -20,6 +22,17 @@ class MihomoSourceTest(unittest.TestCase):
         }
 
         self.assertEqual(selected_route(groups), "白嫖机场 → 区域自动 → 香港自动 → 🇭🇰香港HY")
+
+    def test_split_route_separates_current_proxy_from_parent_route(self):
+        self.assertEqual(
+            split_route("白嫖机场 → 区域自动 → 香港自动 → 🇭🇰香港HY🚀"),
+            ("白嫖机场 → 区域自动 → 香港自动", "🇭🇰香港HY🚀"),
+        )
+
+    def test_append_history_keeps_recent_samples_only(self):
+        history = [1, 2]
+
+        self.assertEqual(append_history(history, 3, limit=2), [2, 3])
 
     def test_latest_delay_uses_last_non_zero_delay(self):
         group = {"history": [{"delay": 71}, {"delay": 0}, {"delay": 195}]}

@@ -1,11 +1,24 @@
 from textual.containers import VerticalScroll
 from textual.widgets import Static
 
-from store.sources.mihomo_source import GROUPS, format_delay, format_rate
+from store.sources.mihomo_source import GROUPS, format_delay, format_rate, split_route
 
 
-_LABELS = {"香港自动": "HK", "日本自动": "JP", "美国OpenAI": "US"}
+_LABELS = {"香港自动": "HK", "美国OpenAI": "US"}
 _STYLE = {"OK": "green", "WARN": "yellow", "BAD": "red", "DOWN": "red bold"}
+_SPARKS = "▁▂▃▄▅▆▇█"
+
+
+def sparkline(values: list[int | float], width: int = 10) -> str:
+    if not values:
+        return ""
+    values = values[-width:]
+    low = min(values)
+    high = max(values)
+    if low == high:
+        return _SPARKS[0] * len(values)
+    scale = len(_SPARKS) - 1
+    return "".join(_SPARKS[round((value - low) * scale / (high - low))] for value in values)
 
 
 class MihomoPanel(VerticalScroll):
@@ -20,14 +33,23 @@ class MihomoPanel(VerticalScroll):
 
     def _format(self, data: dict) -> str:
         traffic = data.get("traffic") or {}
+        traffic_history = data.get("traffic_history") or {}
         wifi = data.get("wifi") or {}
         ping = data.get("ping") or {}
         quality = data.get("quality", "DOWN")
         reason = data.get("quality_reason", "")
         delays = data.get("delays") or {}
+        delay_history = data.get("delay_history") or {}
+        route_text, current_proxy = split_route(data.get("route", "--"))
 
         delay_lines = [
-            f"  {_LABELS[name]}  {format_delay(delays.get(name))}" for name in GROUPS
+            "{prefix}{label}  {delay}{curve}".format(
+                prefix="[bold]Speed[/bold]  " if index == 0 else "       ",
+                label=_LABELS[name],
+                delay=format_delay(delays.get(name)),
+                curve=f"  {sparkline(delay_history.get(name) or [])}" if delay_history.get(name) else "",
+            )
+            for index, name in enumerate(GROUPS)
         ]
         avg = ping.get("avg_ms")
         loss = ping.get("loss_pct")
@@ -36,17 +58,20 @@ class MihomoPanel(VerticalScroll):
         status = f"[{_STYLE.get(quality, 'white')}]{quality}[/]"
         if reason:
             status += f" [dim]{reason}[/dim]"
+        down_curve = sparkline(traffic_history.get("down") or [])
+        up_curve = sparkline(traffic_history.get("up") or [])
 
         return "\n".join(
             [
-                f"[bold]Proxy[/bold]  {data.get('route', '--')}",
-                "[bold]Proxy Speed[/bold]",
+                f"[bold]Proxy[/bold]  {current_proxy}   {status}",
+                f"[bold]Route[/bold]  {route_text}",
+                "",
                 *delay_lines,
                 "",
-                f"[bold]Route[/bold]  {data.get('route', '--')}",
-                f"[bold]Flow[/bold]   ↓ {format_rate(traffic.get('down'))}  ↑ {format_rate(traffic.get('up'))}",
+                f"[bold]Flow[/bold]   ↓ {format_rate(traffic.get('down'))}  {down_curve}",
+                f"       ↑ {format_rate(traffic.get('up'))}  {up_curve}",
                 "",
-                f"[bold]WiFi[/bold]   {wifi.get('ssid', '--')}  {wifi.get('signal_dbm', '--')} dBm  RX {wifi.get('rx_mbit', '--')}M  TX {wifi.get('tx_mbit', '--')}M",
-                f"[bold]LAN[/bold]    {data.get('router', '--')}  {router_text}  loss {loss_text}  {status}",
+                f"[bold]WiFi[/bold]   {wifi.get('ssid', '--')}  {wifi.get('signal_dbm', '--')} dBm  RX {wifi.get('rx_mbit', '--')}M / TX {wifi.get('tx_mbit', '--')}M",
+                f"[bold]LAN[/bold]    {data.get('router', '--')}  {router_text}  loss {loss_text}",
             ]
         )
