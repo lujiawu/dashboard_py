@@ -110,6 +110,7 @@ class Agent:
 class Todo:
     id: str
     subject: str
+    description: str = ""
     completed: bool = False
     priority: int = 0
     due_time: int = 0
@@ -135,30 +136,6 @@ class CalendarEvent:
     title: str
     start_time: int
     end_time: int
-
-    def __hash__(self):
-        return id(self)
-
-
-@dataclass
-class GoalProgress:
-    name: str
-    current: float
-    goal: float
-    unit: str = ""
-    disabled: bool = False
-    icon: str = "◆"
-    children: List["GoalProgress"] = field(default_factory=list)
-
-    @property
-    def percentage(self) -> float:
-        if self.goal == 0:
-            return 0.0
-        return min(100.0, (self.current / self.goal) * 100)
-
-    @property
-    def is_warning(self) -> bool:
-        return self.disabled or self.percentage >= 90
 
     def __hash__(self):
         return id(self)

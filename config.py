@@ -7,14 +7,8 @@ CONFIG_DIR = Path.home() / ".config" / "dashboard"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 _DEFAULTS = {
-    "remote": {
-        "api_url": "http://192.168.1.165:8000/",
-        "host_label": "remote",
-        "timeout": 5,
-        "refresh_interval": 2.0,
-    },
     "sessions": {
-        "directory": "~/.config/opencode/sessions",
+        "directory": "~/.cache/agent-status.json",
         "refresh_interval": 30.0,
     },
     "dws": {
@@ -31,10 +25,6 @@ _DEFAULTS = {
         "calendar": {
             "refresh_interval": 300.0,
         },
-    },
-    "goals": {
-        "api_url": "http://192.168.1.165:8000/goals",
-        "refresh_interval": 86400.0,
     },
     "system": {
         "disk_path": "/",

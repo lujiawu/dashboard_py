@@ -56,9 +56,11 @@ def load_config() -> dict:
 # ============================================================================
 class Todo:
     def __init__(self, task_id: str, subject: str, completed: bool = False,
-                 priority: int = 0, due_time: int = 0, created_time: int = 0):
+                 description: str = "", priority: int = 0, due_time: int = 0,
+                 created_time: int = 0):
         self.id = task_id
         self.subject = subject
+        self.description = description
         self.completed = completed
         self.priority = priority
         self.due_time = due_time
@@ -97,10 +99,17 @@ def fetch_todos(page: int = 1, page_size: int = 100, completed: bool = False, ti
         return []
 
     cards = data.get("result", {}).get("todoCards", [])
+    descriptions = {}
+    for item in cards:
+        task_id = item.get("taskId", "")
+        detail = run_dws(["todo", "task", "get", "--task-id", task_id, "--format", "json"],
+                         timeout_sec=timeout_sec) if task_id else None
+        descriptions[task_id] = (detail or {}).get("result", {}).get("todoDetailModel", {}).get("description", "") or ""
     return [
         Todo(
             task_id=item.get("taskId", ""),
             subject=item.get("subject", ""),
+            description=descriptions.get(item.get("taskId", ""), ""),
             completed=(status == "true"),
             priority=item.get("priority", 0),
             due_time=item.get("dueTime") or 0,
@@ -159,6 +168,7 @@ def format_todo(t: Todo) -> dict:
     return {
         "id": t.id,
         "subject": t.subject,
+        "description": t.description,
         "completed": t.completed,
         "priority": t.priority,
         "due_time": t.due_time,
@@ -189,26 +199,27 @@ def _print_rich(todos: List[Todo]) -> None:
     table.add_column("Prio", no_wrap=True, width=4)
     table.add_column("Due", no_wrap=True, width=6)
     table.add_column("Subject", no_wrap=False, ratio=1)
+    table.add_column("Description", no_wrap=False, ratio=1)
 
     for t in sorted(todos, key=lambda x: (-x.priority, x.due_time or 2**31)):
         prio = _priority_rich(t.priority)
         due = format_due(t.due_time)
         subject = f"✅ {t.subject}" if t.completed else t.subject
-        table.add_row(prio, due, subject)
+        table.add_row(prio, due, subject, t.description)
 
     console.print(table)
 
 
 def _print_plain(todos: List[Todo]) -> None:
     print(f"\n  Todo ({len(todos)})")
-    print(f"  {'Prio':<4} {'Due':<6} {'Subject'}")
-    print(f"  {'-'*4} {'-'*6} {'-'*50}")
+    print(f"  {'Prio':<4} {'Due':<6} {'Subject':<60} Description")
+    print(f"  {'-'*4} {'-'*6} {'-'*60} {'-'*40}")
 
     for t in sorted(todos, key=lambda x: (-x.priority, x.due_time or 2**31)):
         prio = _priority_plain(t.priority)
         due = format_due(t.due_time)
         subject = f"✅ {t.subject}" if t.completed else t.subject
-        print(f"  {prio:<4} {due:<6} {subject[:60]}")
+        print(f"  {prio:<4} {due:<6} {subject[:60]:<60} {t.description[:60]}")
 
 
 def print_json(todos: List[Todo]) -> None:

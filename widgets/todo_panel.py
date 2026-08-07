@@ -50,6 +50,7 @@ class TodoPanel(Vertical):
         self._table.add_column("P", width=3)
         self._table.add_column("Due", width=8)
         self._subject_key = self._table.add_column("Subject", width=None)
+        self._description_key = self._table.add_column("Description", width=None)
         self._table.focus()
 
     @on(DataTable.RowSelected)
@@ -68,7 +69,7 @@ class TodoPanel(Vertical):
         self._table.clear()
         rows = self._build_rows(todos)
         if not rows:
-            self._row_keys = self._table.add_rows([(Text("", style=""), Text("", style=""), Text("🎉 暂无待办", style="dim"))])
+            self._row_keys = self._table.add_rows([(Text("", style=""), Text("", style=""), Text("🎉 暂无待办", style="dim"), Text("", style=""))])
         else:
             self._row_keys = self._table.add_rows(rows)
 
@@ -84,7 +85,7 @@ class TodoPanel(Vertical):
             p_str = _priority_label(todo.priority)
             due_str = _format_due(todo.due_time)
             subject = f"✅ {todo.subject or '?'}" if todo.completed else (todo.subject or "?")
-            rows.append((p_str, due_str, subject))
+            rows.append((p_str, due_str, subject, todo.description or ""))
 
         return rows
 

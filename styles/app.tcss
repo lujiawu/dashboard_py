@@ -95,13 +95,6 @@
     border: solid $text-accent;
 }
 
-#goal-progress.panel {
-    border: solid $accent;
-}
-#goal-progress.panel:focus, #goal-progress.panel:focus-within {
-    border: solid $text-accent;
-}
-
 #bottom-area.panel {
     border: solid $surface-lighten-2;
     background: $surface;
@@ -115,26 +108,6 @@ GoalTreePanel {
 
 GoalTreePanel > Static {
     width: 100%;
-}
-
-#goal-progress .goal-tree-item {
-    border-top: none;
-    padding-bottom: 0;
-    margin-bottom: 1;
-}
-
-#goal-progress CollapsibleTitle {
-    padding: 0 0;
-    height: auto;
-    text-style: none;
-}
-
-#goal-progress CollapsibleTitle:hover {
-    text-style: bold;
-}
-
-#goal-progress .goal-children {
-    margin-left: 2;
 }
 
 YunxiaoPanel {

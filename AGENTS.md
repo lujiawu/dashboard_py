@@ -29,4 +29,3 @@
 
 - `python app.py` - Start the dashboard
 - Hotkeys: `t` toggle first todo, `g` toggle goal privacy, `r` refresh, `q` quit
-

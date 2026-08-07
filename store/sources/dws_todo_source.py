@@ -49,16 +49,21 @@ class DwsTodoSource(DataSource[List[Todo]]):
         try:
             data = json.loads(stdout.decode())
             cards = data.get("result", {}).get("todoCards", [])
+            descriptions = await asyncio.gather(
+                *(self._fetch_description(item.get("taskId", "")) for item in cards),
+                return_exceptions=True,
+            )
             todos = [
                 Todo(
                     id=item.get("taskId", ""),
                     subject=item.get("subject", ""),
+                    description=description if isinstance(description, str) else "",
                     completed=(status == "true"),
                     priority=item.get("priority", 0),
                     due_time=item.get("dueTime") or 0,
                     created_time=item.get("createdTime") or 0,
                 )
-                for item in cards
+                for item, description in zip(cards, descriptions)
             ]
             self._cached = todos
             logger.info("[DwsTodo] status=%s, got %d todos", status, len(todos))
@@ -66,6 +71,23 @@ class DwsTodoSource(DataSource[List[Todo]]):
         except (json.JSONDecodeError, KeyError) as e:
             logger.warning("[DwsTodo] parse failed: %s, raw=%s", e, stdout.decode(errors="replace").strip()[:200])
             return self._cached
+
+    async def _fetch_description(self, task_id: str) -> str:
+        if not task_id:
+            return ""
+        proc = await asyncio.create_subprocess_exec(
+            "dws", "todo", "task", "get", "--task-id", task_id, "--format", "json",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await proc.communicate()
+        if proc.returncode != 0:
+            return ""
+        try:
+            data = json.loads(stdout.decode())
+            return data.get("result", {}).get("todoDetailModel", {}).get("description", "") or ""
+        except (json.JSONDecodeError, AttributeError):
+            return ""
 
     async def set_done_status(self, task_id: str, completed: bool) -> bool:
         status = "true" if completed else "false"
