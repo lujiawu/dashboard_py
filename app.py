@@ -6,8 +6,10 @@ import urllib.request
 # Bypass system proxy — Python urllib ignores Windows ProxyOverride
 urllib.request.install_opener(urllib.request.build_opener(urllib.request.ProxyHandler({})))
 
+from textual import events
 from textual.app import App, ComposeResult
 from textual.containers import Vertical, Horizontal
+from textual.widgets import Static
 from widgets.ai_agents_panel import AiAgentsPanel
 from widgets.todo_panel import TodoPanel
 from widgets.yunxiao_panel import YunxiaoPanel
@@ -32,6 +34,43 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+MIN_ROW_HEIGHT = 5
+
+
+def resize_rows(top: int, middle: int, bottom: int, divider: str, delta: int) -> tuple[int, int]:
+    """Resize the two rows adjacent to a divider without crossing their minimums."""
+    if divider == "top-divider":
+        delta = max(MIN_ROW_HEIGHT - top, min(delta, middle - MIN_ROW_HEIGHT))
+        return top + delta, middle - delta
+
+    delta = max(MIN_ROW_HEIGHT - middle, min(delta, bottom - MIN_ROW_HEIGHT))
+    return middle + delta, bottom - delta
+
+
+class RowDivider(Static):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._start_y: int | None = None
+
+    def on_mouse_down(self, event: events.MouseDown) -> None:
+        self._start_y = int(event.screen_y)
+        self.capture_mouse()
+        event.stop()
+
+    def on_mouse_move(self, event: events.MouseMove) -> None:
+        if self._start_y is not None:
+            current_y = int(event.screen_y)
+            self.app.resize_rows(self.id, current_y - self._start_y)
+            self._start_y = current_y
+            event.stop()
+
+    def on_mouse_up(self, event: events.MouseUp) -> None:
+        if self._start_y is not None:
+            self._start_y = None
+            self.release_mouse()
+            event.stop()
+
+
 class DashboardApp(App):
     CSS_PATH = "styles/app.tcss"
 
@@ -42,11 +81,13 @@ class DashboardApp(App):
                 DwsInfoPanel(id="dws-info", classes="panel"),
                 id="top-row"
             ),
+            RowDivider(id="top-divider"),
             Horizontal(
                 TodoPanel(id="todo-list", classes="panel"),
                 BottomPanel(id="bottom-area", classes="panel side-panel"),
                 id="middle-row"
             ),
+            RowDivider(id="middle-divider"),
             Horizontal(
                 GitStatusPanel(id="git-status", classes="panel"),
                 MihomoPanel(id="mihomo", classes="panel"),
@@ -55,6 +96,23 @@ class DashboardApp(App):
             ),
             id="main-layout"
         )
+
+    def resize_rows(self, divider: str, delta: int) -> None:
+        top = self.query_one("#top-row")
+        middle = self.query_one("#middle-row")
+        bottom = self.query_one("#bottom-row")
+        first_height, second_height = resize_rows(
+            top.size.height,
+            middle.size.height,
+            bottom.size.height,
+            divider,
+            delta,
+        )
+        if divider == "top-divider":
+            top.styles.height = first_height
+            middle.styles.height = second_height
+        else:
+            middle.styles.height = first_height
 
     def on_mount(self):
         logger.info("[App] on_mount start")

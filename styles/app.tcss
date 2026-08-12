@@ -11,6 +11,16 @@
 }
 #bottom-row {
     height: 1fr;
+    min-height: 5;
+}
+
+RowDivider {
+    height: 1;
+    background: transparent;
+}
+
+RowDivider:hover {
+    background: $primary;
 }
 
 /* ===== 列宽分配 ===== */
