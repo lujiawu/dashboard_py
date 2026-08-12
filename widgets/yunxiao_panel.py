@@ -65,6 +65,7 @@ class _YunxiaoTable(DataTable):
 
 
 class YunxiaoPanel(Vertical):
+    ALLOW_MAXIMIZE = True
 
     def compose(self):
         self._table = _YunxiaoTable()

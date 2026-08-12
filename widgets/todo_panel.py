@@ -26,6 +26,7 @@ def _format_due(due_time: int) -> str:
 
 
 class TodoPanel(Vertical):
+    ALLOW_MAXIMIZE = True
     BINDINGS = [
         ("c", "copy_item", "Copy"),
     ]

@@ -9,7 +9,7 @@ urllib.request.install_opener(urllib.request.build_opener(urllib.request.ProxyHa
 from textual import events
 from textual.app import App, ComposeResult
 from textual.containers import Vertical, Horizontal
-from textual.widgets import Static
+from textual.widgets import Input, Static, TextArea
 from widgets.ai_agents_panel import AiAgentsPanel
 from widgets.todo_panel import TodoPanel
 from widgets.yunxiao_panel import YunxiaoPanel
@@ -113,6 +113,19 @@ class DashboardApp(App):
             middle.styles.height = second_height
         else:
             middle.styles.height = first_height
+
+    def action_toggle_fullscreen(self) -> None:
+        if self.screen.maximized:
+            self.screen.minimize()
+            return
+
+        widget = self.focused
+        if isinstance(widget, (Input, TextArea)):
+            return
+        while widget and "panel" not in widget.classes:
+            widget = widget.parent
+        if widget:
+            self.screen.maximize(widget, container=False)
 
     def on_mount(self):
         logger.info("[App] on_mount start")
@@ -254,6 +267,9 @@ class DashboardApp(App):
             event.stop()
         elif event.key == "t":
             asyncio.create_task(self._toggle_todo())
+            event.stop()
+        elif event.key == "z":
+            self.action_toggle_fullscreen()
             event.stop()
 
     def copy_to_clipboard(self, text: str):
