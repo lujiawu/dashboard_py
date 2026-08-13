@@ -7,10 +7,6 @@ CONFIG_DIR = Path.home() / ".config" / "dashboard"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 _DEFAULTS = {
-    "sessions": {
-        "directory": "~/.cache/agent-status.json",
-        "refresh_interval": 30.0,
-    },
     "dws": {
         "todo": {
             "executor_id": "01455548515339212734",
@@ -18,12 +14,6 @@ _DEFAULTS = {
             "page_size": 100,
             "timeout": 60,
             "refresh_interval": 60.0,
-        },
-        "chat": {
-            "refresh_interval": 60.0,
-        },
-        "calendar": {
-            "refresh_interval": 300.0,
         },
     },
     "system": {
@@ -56,11 +46,6 @@ _DEFAULTS = {
         "iface": "",
         "traffic_interval": 2.0,
         "status_interval": 30.0,
-    },
-    "snippet_file": "~/.config/dashboard/snippets.md",
-    "session_parser": {
-        "max_retry_attempts": 3,
-        "retry_interval_sec": 0.5,
     },
 }
 

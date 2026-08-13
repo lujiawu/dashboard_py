@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import threading
 import urllib.request
 
 # Bypass system proxy — Python urllib ignores Windows ProxyOverride
@@ -8,19 +7,16 @@ urllib.request.install_opener(urllib.request.build_opener(urllib.request.ProxyHa
 
 from textual import events
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.containers import Vertical, Horizontal
 from textual.widgets import Input, Static, TextArea
-from widgets.ai_agents_panel import AiAgentsPanel
 from widgets.todo_panel import TodoPanel
 from widgets.yunxiao_panel import YunxiaoPanel
-from widgets.bottom_panel import BottomPanel
-from store.sources.session_source import SessionDataSource
 from store.sources.dws_todo_source import DwsTodoSource
-from store.sources.dws_chat_source import DwsChatSource
-from store.sources.dws_calendar_source import DwsCalendarSource
 from store.sources.yunxiao_source import YunxiaoSource
 from store.sources.mihomo_source import MihomoSource
-from widgets.dws_info_panel import DwsInfoPanel
+from store.dws_client import DwsClient
+from widgets.chat_panel import ChatPanel
 from widgets.git_status_panel import GitStatusPanel
 from widgets.mihomo_panel import MihomoPanel
 from config import cfg
@@ -35,16 +31,24 @@ logger = logging.getLogger(__name__)
 
 
 MIN_ROW_HEIGHT = 5
+PANEL_IDS = {"todo-list", "chat", "git-status", "mihomo", "yunxiao"}
+MIN_PANEL_WIDTHS = {
+    "todo-list": 30,
+    "chat": 40,
+    "git-status": 20,
+    "mihomo": 35,
+    "yunxiao": 101,
+}
 
 
-def resize_rows(top: int, middle: int, bottom: int, divider: str, delta: int) -> tuple[int, int]:
-    """Resize the two rows adjacent to a divider without crossing their minimums."""
-    if divider == "top-divider":
-        delta = max(MIN_ROW_HEIGHT - top, min(delta, middle - MIN_ROW_HEIGHT))
-        return top + delta, middle - delta
+def resize_rows(top: int, bottom: int, delta: int) -> tuple[int, int]:
+    delta = max(MIN_ROW_HEIGHT - top, min(delta, bottom - MIN_ROW_HEIGHT))
+    return top + delta, bottom - delta
 
-    delta = max(MIN_ROW_HEIGHT - middle, min(delta, bottom - MIN_ROW_HEIGHT))
-    return middle + delta, bottom - delta
+
+def resize_columns(left: int, right: int, delta: int, min_left: int, min_right: int) -> tuple[int, int]:
+    delta = max(min_left - left, min(delta, right - min_right))
+    return left + delta, right - delta
 
 
 class RowDivider(Static):
@@ -60,7 +64,7 @@ class RowDivider(Static):
     def on_mouse_move(self, event: events.MouseMove) -> None:
         if self._start_y is not None:
             current_y = int(event.screen_y)
-            self.app.resize_rows(self.id, current_y - self._start_y)
+            self.app.resize_rows(current_y - self._start_y)
             self._start_y = current_y
             event.stop()
 
@@ -71,48 +75,79 @@ class RowDivider(Static):
             event.stop()
 
 
+class ColumnDivider(Static):
+    def __init__(self, left_id: str, right_id: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.left_id = left_id
+        self.right_id = right_id
+        self._start_x: int | None = None
+
+    def on_mouse_down(self, event: events.MouseDown) -> None:
+        self._start_x = int(event.screen_x)
+        self.capture_mouse()
+        event.stop()
+
+    def on_mouse_move(self, event: events.MouseMove) -> None:
+        if self._start_x is not None:
+            current_x = int(event.screen_x)
+            self.app.resize_columns(self.left_id, self.right_id, current_x - self._start_x)
+            self._start_x = current_x
+            event.stop()
+
+    def on_mouse_up(self, event: events.MouseUp) -> None:
+        if self._start_x is not None:
+            self._start_x = None
+            self.release_mouse()
+            event.stop()
+
 class DashboardApp(App):
     CSS_PATH = "styles/app.tcss"
+    BINDINGS = [Binding("z", "toggle_fullscreen", "Fullscreen", priority=True)]
 
     def compose(self) -> ComposeResult:
         yield Vertical(
             Horizontal(
-                AiAgentsPanel(id="ai-agents", classes="panel"),
-                DwsInfoPanel(id="dws-info", classes="panel"),
-                id="top-row"
-            ),
-            RowDivider(id="top-divider"),
-            Horizontal(
                 TodoPanel(id="todo-list", classes="panel"),
-                BottomPanel(id="bottom-area", classes="panel side-panel"),
-                id="middle-row"
+                ColumnDivider("todo-list", "chat", id="todo-chat-divider"),
+                ChatPanel(DwsClient(), id="chat", classes="panel"),
+                id="top-row"
             ),
             RowDivider(id="middle-divider"),
             Horizontal(
                 GitStatusPanel(id="git-status", classes="panel"),
+                ColumnDivider("git-status", "mihomo", id="git-mihomo-divider"),
                 MihomoPanel(id="mihomo", classes="panel"),
+                ColumnDivider("mihomo", "yunxiao", id="mihomo-yunxiao-divider"),
                 YunxiaoPanel(id="yunxiao", classes="panel"),
                 id="bottom-row"
             ),
             id="main-layout"
         )
 
-    def resize_rows(self, divider: str, delta: int) -> None:
+    def resize_rows(self, delta: int) -> None:
         top = self.query_one("#top-row")
-        middle = self.query_one("#middle-row")
         bottom = self.query_one("#bottom-row")
-        first_height, second_height = resize_rows(
-            top.size.height,
-            middle.size.height,
-            bottom.size.height,
-            divider,
+        top_height, bottom_height = resize_rows(top.size.height, bottom.size.height, delta)
+        top.styles.height = top_height
+        bottom.styles.height = bottom_height
+
+    def resize_columns(self, left_id: str, right_id: str, delta: int) -> None:
+        left = self.query_one(f"#{left_id}")
+        right = self.query_one(f"#{right_id}")
+        left_width, right_width = resize_columns(
+            left.size.width,
+            right.size.width,
             delta,
+            MIN_PANEL_WIDTHS[left_id],
+            MIN_PANEL_WIDTHS[right_id],
         )
-        if divider == "top-divider":
-            top.styles.height = first_height
-            middle.styles.height = second_height
-        else:
-            middle.styles.height = first_height
+        row_id = "top-row" if left_id in {"todo-list", "chat"} else "bottom-row"
+        row = self.query_one(f"#{row_id}")
+        widths = {panel.id: panel.size.width for panel in row.query(".panel")}
+        widths[left_id] = left_width
+        widths[right_id] = right_width
+        for panel in row.query(".panel"):
+            panel.styles.width = widths[panel.id] + 4
 
     def action_toggle_fullscreen(self) -> None:
         if self.screen.maximized:
@@ -122,70 +157,38 @@ class DashboardApp(App):
         widget = self.focused
         if isinstance(widget, (Input, TextArea)):
             return
-        while widget and "panel" not in widget.classes:
+        while widget is not None and widget.id not in PANEL_IDS:
             widget = widget.parent
-        if widget:
+        if widget is not None:
             self.screen.maximize(widget, container=False)
 
     def on_mount(self):
         logger.info("[App] on_mount start")
 
-        self.session_source = SessionDataSource(cfg["sessions"])
-        self.session_source.start_watching()
-        self.session_source.set_on_reload(
-            lambda: (
-                self.call_from_thread(self._push_sessions_to_tui)
-                if threading.current_thread() is not threading.main_thread()
-                else asyncio.create_task(self._push_sessions_to_tui())
-            )
-        )
-        logger.info("[App] SessionDataSource watching started")
-
         self.dws_todo_source = DwsTodoSource(cfg["dws"]["todo"])
-        self.dws_chat_source = DwsChatSource(cfg["dws"]["chat"])
-        self.dws_calendar_source = DwsCalendarSource(cfg["dws"]["calendar"])
         self.yunxiao_source = YunxiaoSource(cfg["yunxiao"])
         self.mihomo_source = MihomoSource(cfg["mihomo"])
+        self.chat_client = self.query_one("#chat", ChatPanel).client
+        if self.chat_client.available():
+            asyncio.create_task(self.chat_client.load_self())
 
         asyncio.create_task(self._refresh_all())
 
-        self.set_interval(self.dws_chat_source.refresh_interval, self._poll_dws_info)
         self.set_interval(self.yunxiao_source.refresh_interval, self._poll_yunxiao)
         self.set_interval(cfg["git"]["refresh_interval"], self._poll_git_status)
         self.set_interval(self.mihomo_source.refresh_interval, self._poll_mihomo)
-        self.set_interval(2.0, self._compensation_poll_sessions)
         logger.info("[App] on_mount end")
 
-        self.notify("'q' quit, 'r' refresh, 't' toggle todo", timeout=5)
+        self.notify("'q' quit, 'r' refresh, 't' toggle todo, 'z' fullscreen", timeout=5)
 
     async def _refresh_all(self):
         self.notify("\u27f3 Refreshing...", timeout=1)
         await asyncio.gather(
-            self._poll_sessions(),
             self._poll_todos(),
-            self._poll_dws_info(),
             self._poll_yunxiao(),
             self._poll_git_status(),
             self._poll_mihomo(),
         )
-
-    async def _poll_sessions(self):
-        try:
-            local_sessions = await self.session_source.fetch()
-            for s in local_sessions:
-                s.host = "local"
-
-            logger.info("[Poll] sessions: local=%d", len(local_sessions))
-            panel = self.query_one("#ai-agents", AiAgentsPanel)
-            panel.update_sessions(local_sessions)
-        except Exception as e:
-            logger.error(f"[App] Failed to poll sessions: {e}")
-
-    async def _push_sessions_to_tui(self):
-        await self._poll_sessions()
-
-    def _compensation_poll_sessions(self):
-        self.session_source.compensation_poll()
 
     async def _poll_todos(self):
         try:
@@ -195,18 +198,6 @@ class DashboardApp(App):
             panel.update_todos(todos)
         except Exception as e:
             logger.error(f"[App] Failed to poll todos: {e}")
-
-    async def _poll_dws_info(self):
-        try:
-            conversations, events = await asyncio.gather(
-                self.dws_chat_source.fetch(),
-                self.dws_calendar_source.fetch(),
-            )
-            logger.info("[Poll] dws: %d chats, %d events", len(conversations), len(events))
-            panel = self.query_one("#dws-info", DwsInfoPanel)
-            panel.update(conversations, events)
-        except Exception as e:
-            logger.error(f"[App] Failed to poll dws info: {e}")
 
     async def _poll_yunxiao(self):
         if getattr(self, "_polling_yunxiao", False):
@@ -260,7 +251,6 @@ class DashboardApp(App):
 
     def on_key(self, event):
         if event.key == "q":
-            self.session_source.stop_watching()
             self.exit()
         elif event.key == "r":
             asyncio.create_task(self._refresh_all())

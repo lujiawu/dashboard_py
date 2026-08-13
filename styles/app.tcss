@@ -4,10 +4,7 @@
 }
 
 #top-row {
-    height: 9;
-}
-#middle-row {
-    height: 18;
+    height: 2fr;
 }
 #bottom-row {
     height: 1fr;
@@ -24,19 +21,22 @@ RowDivider:hover {
 }
 
 /* ===== 列宽分配 ===== */
-#top-row > #ai-agents {
-    width: 4fr;
-}
-#top-row > #dws-info {
-    width: 2fr;
+#top-row > #todo-list{
+    width: 1fr;
 }
 
-#middle-row > #todo-list{
-    width: 3fr;
+#top-row > #chat {
+    width: 1fr;
 }
 
-#middle-row > .side-panel {
-    width: 2fr;
+ColumnDivider {
+    width: 1;
+    height: 100%;
+    background: transparent;
+}
+
+ColumnDivider:hover {
+    background: $primary;
 }
 
 .hidden {
@@ -63,24 +63,10 @@ RowDivider:hover {
     height: 100%;
 }
 
-#ai-agents.panel {
-    border: solid $primary;
-}
-#ai-agents.panel:focus, #ai-agents.panel:focus-within {
-    border: solid $text-accent;
-}
-
 #todo-list.panel {
     border: solid $warning;
 }
 #todo-list.panel:focus, #todo-list.panel:focus-within {
-    border: solid $text-accent;
-}
-
-#dws-info.panel {
-    border: solid $success;
-}
-#dws-info.panel:focus, #dws-info.panel:focus-within {
     border: solid $text-accent;
 }
 
@@ -105,22 +91,25 @@ RowDivider:hover {
     border: solid $text-accent;
 }
 
-#bottom-area.panel {
-    border: solid $surface-lighten-2;
-    background: $surface;
+#chat > #chat-conversations {
+    width: 2fr;
+}
+
+#chat > #chat-conversation-pane {
+    width: 5fr;
+}
+
+#chat-messages {
+    height: 1fr;
     padding: 0 1;
 }
 
-/* ===== 特定 widget 微调 ===== */
-GoalTreePanel {
-    padding: 0 1;
+#chat-input {
+    height: 3;
 }
 
-GoalTreePanel > Static {
-    width: 100%;
-}
-
-YunxiaoPanel {
+#chat-status {
+    height: 1;
     padding: 0 1;
 }
 YunxiaoPanel DataTable {
