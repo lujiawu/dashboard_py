@@ -14,11 +14,9 @@ from widgets.todo_panel import TodoPanel
 from widgets.yunxiao_panel import YunxiaoPanel
 from store.sources.dws_todo_source import DwsTodoSource
 from store.sources.yunxiao_source import YunxiaoSource
-from store.sources.mihomo_source import MihomoSource
 from store.dws_client import DwsClient
 from widgets.chat_panel import ChatPanel
 from widgets.git_status_panel import GitStatusPanel
-from widgets.mihomo_panel import MihomoPanel
 from config import cfg
 
 logging.basicConfig(
@@ -31,12 +29,11 @@ logger = logging.getLogger(__name__)
 
 
 MIN_ROW_HEIGHT = 5
-PANEL_IDS = {"todo-list", "chat", "git-status", "mihomo", "yunxiao"}
+PANEL_IDS = {"todo-list", "chat", "git-status", "yunxiao"}
 MIN_PANEL_WIDTHS = {
     "todo-list": 30,
     "chat": 40,
     "git-status": 20,
-    "mihomo": 35,
     "yunxiao": 101,
 }
 
@@ -115,9 +112,7 @@ class DashboardApp(App):
             RowDivider(id="middle-divider"),
             Horizontal(
                 GitStatusPanel(id="git-status", classes="panel"),
-                ColumnDivider("git-status", "mihomo", id="git-mihomo-divider"),
-                MihomoPanel(id="mihomo", classes="panel"),
-                ColumnDivider("mihomo", "yunxiao", id="mihomo-yunxiao-divider"),
+                ColumnDivider("git-status", "yunxiao", id="git-yunxiao-divider"),
                 YunxiaoPanel(id="yunxiao", classes="panel"),
                 id="bottom-row"
             ),
@@ -167,7 +162,6 @@ class DashboardApp(App):
 
         self.dws_todo_source = DwsTodoSource(cfg["dws"]["todo"])
         self.yunxiao_source = YunxiaoSource(cfg["yunxiao"])
-        self.mihomo_source = MihomoSource(cfg["mihomo"])
         self.chat_client = self.query_one("#chat", ChatPanel).client
         if self.chat_client.available():
             asyncio.create_task(self.chat_client.load_self())
@@ -176,7 +170,6 @@ class DashboardApp(App):
 
         self.set_interval(self.yunxiao_source.refresh_interval, self._poll_yunxiao)
         self.set_interval(cfg["git"]["refresh_interval"], self._poll_git_status)
-        self.set_interval(self.mihomo_source.refresh_interval, self._poll_mihomo)
         logger.info("[App] on_mount end")
 
         self.notify("'q' quit, 'r' refresh, 't' toggle todo, 'z' fullscreen", timeout=5)
@@ -187,7 +180,6 @@ class DashboardApp(App):
             self._poll_todos(),
             self._poll_yunxiao(),
             self._poll_git_status(),
-            self._poll_mihomo(),
         )
 
     async def _poll_todos(self):
@@ -221,19 +213,6 @@ class DashboardApp(App):
             await panel.refresh_status()
         except Exception as e:
             logger.error(f"[App] Failed to poll git status: {e}")
-
-    async def _poll_mihomo(self):
-        if getattr(self, "_polling_mihomo", False):
-            return
-        self._polling_mihomo = True
-        try:
-            data = await self.mihomo_source.fetch()
-            panel = self.query_one("#mihomo", MihomoPanel)
-            panel.update_status(data)
-        except Exception as e:
-            logger.error(f"[App] Failed to poll mihomo: {e}")
-        finally:
-            self._polling_mihomo = False
 
     async def _toggle_todo(self):
         try:

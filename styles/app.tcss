@@ -47,12 +47,8 @@ ColumnDivider:hover {
     width: 1fr;
     height: auto;
 }
-#bottom-row > #mihomo {
-    width: 1fr;
-    height: auto;
-}
 #bottom-row > #yunxiao {
-    width: 3fr;
+    width: 4fr;
     height: 1fr;
 }
 
@@ -72,15 +68,9 @@ ColumnDivider:hover {
 
 #git-status.panel {
     border: solid $error;
+    padding: 1 2;
 }
 #git-status.panel:focus, #git-status.panel:focus-within {
-    border: solid $text-accent;
-}
-
-#mihomo.panel {
-    border: solid $success;
-}
-#mihomo.panel:focus, #mihomo.panel:focus-within {
     border: solid $text-accent;
 }
 
