@@ -1,14 +1,23 @@
+import asyncio
 import unittest
+from unittest.mock import AsyncMock
 
-from store.dws_client import format_message_blocks, parse_conversations, parse_messages
+from store.dws_client import DwsClient, conversation_time, format_message_blocks, parse_conversations, parse_dings, parse_messages
 
 
 class DwsClientTest(unittest.TestCase):
     def test_parses_nested_payloads(self):
-        conversations = parse_conversations({"result": {"conversations": [{"conversationId": "c1", "name": "Team"}]}})
+        conversations = parse_conversations({"result": {"conversations": [{"openConversationId": "c1", "title": "Team", "unreadPoint": 3, "lastMsgCreateAt": "2026-08-13T12:34:00+08:00"}]}})
         messages = parse_messages({"messages": [{"messageId": "m1", "sender": "A", "senderId": "u1", "text": "Hi", "createTime": "2026-08-13T12:34:00Z"}]})
         self.assertEqual(conversations[0].name, "Team")
+        self.assertTrue(conversations[0].unread)
+        self.assertEqual(conversations[0].unread_count, 3)
+        self.assertIn("12:34", conversations[0].last_message_at)
         self.assertEqual(messages[0].message_id, "m1")
+
+    def test_conversation_time_formats(self):
+        self.assertEqual(conversation_time(""), "")
+        self.assertEqual(conversation_time("not-a-time"), "")
 
     def test_formats_messages_in_time_order(self):
         messages = parse_messages({"messages": [
@@ -18,6 +27,20 @@ class DwsClientTest(unittest.TestCase):
         blocks = format_message_blocks(messages, "u1")
         self.assertIn("Earlier", blocks[0])
         self.assertIn("Later", blocks[1])
+
+    def test_marks_a_conversation_read(self):
+        client = DwsClient()
+        client._run = AsyncMock()
+        asyncio.run(client.mark_read("c1", "m1"))
+        client._run.assert_awaited_once_with("chat", "+conversation-mark-read", "--conversation-id", "c1", "--message-id", "m1", write=True)
+
+    def test_parses_and_loads_unread_dings(self):
+        dings = parse_dings({"result": {"dingMessages": [{"dingContent": "Reminder", "senderNick": "A", "sendTime": "2026-08-13 12:34:00"}]}})
+        self.assertEqual(dings[0].content, "Reminder")
+        client = DwsClient()
+        client._run = AsyncMock(return_value={"result": {"dingMessages": []}})
+        asyncio.run(client.unread_dings())
+        client._run.assert_awaited_once_with("ding", "+list", "--type", "UNREAD", "--cursor", "0")
 
 
 if __name__ == "__main__":
