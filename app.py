@@ -109,15 +109,26 @@ class DashboardApp(App):
                 ChatPanel(DwsClient(), id="chat", classes="panel"),
                 id="top-row"
             ),
-            RowDivider(id="middle-divider"),
             Horizontal(
                 GitStatusPanel(id="git-status", classes="panel"),
                 ColumnDivider("git-status", "yunxiao", id="git-yunxiao-divider"),
                 YunxiaoPanel(id="yunxiao", classes="panel"),
                 id="bottom-row"
             ),
+            RowDivider(id="middle-divider"),
             id="main-layout"
         )
+
+    def on_resize(self, _event: events.Resize) -> None:
+        self.call_after_refresh(self._position_dividers)
+
+    def _position_dividers(self) -> None:
+        main = self.query_one("#main-layout")
+        top = self.query_one("#top-row")
+
+        middle_divider = self.query_one("#middle-divider", RowDivider)
+        middle_divider.styles.offset = (0, top.region.bottom - main.region.y)
+        middle_divider.styles.width = main.region.width
 
     def resize_rows(self, delta: int) -> None:
         top = self.query_one("#top-row")
@@ -125,6 +136,7 @@ class DashboardApp(App):
         top_height, bottom_height = resize_rows(top.size.height, bottom.size.height, delta)
         top.styles.height = top_height
         bottom.styles.height = bottom_height
+        self.call_after_refresh(self._position_dividers)
 
     def resize_columns(self, left_id: str, right_id: str, delta: int) -> None:
         left = self.query_one(f"#{left_id}")
@@ -159,6 +171,8 @@ class DashboardApp(App):
 
     def on_mount(self):
         logger.info("[App] on_mount start")
+
+        self.set_timer(0.01, self._position_dividers)
 
         self.dws_todo_source = DwsTodoSource(cfg["dws"]["todo"])
         self.yunxiao_source = YunxiaoSource(cfg["yunxiao"])

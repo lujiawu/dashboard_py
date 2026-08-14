@@ -1,23 +1,24 @@
 /* ===== 整体布局 ===== */
 #main-layout {
     height: 100%;
+    layers: base overlay;
 }
 
 #top-row {
     height: 2fr;
+    layer: base;
 }
 #bottom-row {
     height: 1fr;
     min-height: 5;
+    layer: base;
 }
 
 RowDivider {
     height: 1;
     background: transparent;
-}
-
-RowDivider:hover {
-    background: $primary;
+    layer: overlay;
+    position: absolute;
 }
 
 /* ===== 列宽分配 ===== */
