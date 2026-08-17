@@ -1,10 +1,12 @@
 import asyncio
 from dataclasses import replace
+from datetime import datetime, timezone
+from uuid import uuid4
 
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Input, Label, ListItem, ListView, RichLog, Static
 
-from store.dws_client import Conversation, Ding, DwsClient, DwsError, Message, _conversation_order, _message_order, conversation_time, format_ding_blocks, format_message_blocks
+from store.dws_client import Conversation, Ding, DwsClient, DwsError, Message, _conversation_order, _message_order, conversation_time, format_ding_blocks, format_message_blocks, merge_pending_messages
 
 
 DING_CID = "__ding__"
@@ -36,6 +38,8 @@ class ChatPanel(Horizontal):
         self.conversations: list[Conversation] = []
         self.active: Conversation | None = None
         self.messages_by_cid: dict[str, list[Message]] = {}
+        self.pending_messages_by_cid: dict[str, list[Message]] = {}
+        self._message_load_lock = asyncio.Lock()
         self.dings: list[Ding] = []
         self.dings_opened = False
 
@@ -103,28 +107,41 @@ class ChatPanel(Horizontal):
             self._status(f"DING failed: {error}")
 
     async def _load_messages(self, conversation: Conversation, mark_read: bool = False) -> None:
-        try:
-            messages = await self.client.messages(conversation.cid, 50)
-            self.messages_by_cid[conversation.cid] = messages
-            if not self.active or self.active.cid != conversation.cid:
-                return
-            log = self.query_one("#chat-messages", RichLog)
-            log.clear()
-            for block in format_message_blocks(messages, self.client.self_id):
-                log.write(block)
-            log.scroll_end(animate=False)
-            message_id = next((item.message_id for item in sorted(messages, key=_message_order, reverse=True) if item.message_id), "")
-            if mark_read and message_id:
-                try:
-                    await self.client.mark_read(conversation.cid, message_id)
-                except DwsError:
-                    return
+        async with self._message_load_lock:
+            try:
+                for attempt in range(3):
+                    messages = await self.client.messages(conversation.cid, 50)
+                    pending = self.pending_messages_by_cid.get(conversation.cid, [])
+                    messages = merge_pending_messages(messages, pending)
+                    self.pending_messages_by_cid[conversation.cid] = [item for item in pending if item in messages and item.message_id.startswith("local:")]
+                    self.messages_by_cid[conversation.cid] = messages
+                    if self.active and self.active.cid == conversation.cid:
+                        self._render_messages(messages)
+                    if not self.pending_messages_by_cid[conversation.cid] or attempt == 2:
+                        break
+                    await asyncio.sleep(0.5)
                 if not self.active or self.active.cid != conversation.cid:
                     return
-                self.conversations = [replace(item, unread=False, unread_count=0) if item.cid == conversation.cid else item for item in self.conversations]
-                await self._render_conversations()
-        except DwsError as error:
-            self._status(f"Conversation failed: {error}")
+                messages = self.messages_by_cid[conversation.cid]
+                message_id = next((item.message_id for item in sorted(messages, key=_message_order, reverse=True) if item.message_id), "")
+                if mark_read and message_id:
+                    try:
+                        await self.client.mark_read(conversation.cid, message_id)
+                    except DwsError:
+                        return
+                    if not self.active or self.active.cid != conversation.cid:
+                        return
+                    self.conversations = [replace(item, unread=False, unread_count=0) if item.cid == conversation.cid else item for item in self.conversations]
+                    await self._render_conversations()
+            except DwsError as error:
+                self._status(f"Conversation failed: {error}")
+
+    def _render_messages(self, messages: list[Message]) -> None:
+        log = self.query_one("#chat-messages", RichLog)
+        log.clear()
+        for block in format_message_blocks(messages, self.client.self_id):
+            log.write(block)
+        log.scroll_end(animate=False)
 
     async def on_list_view_selected(self, event: ListView.Selected) -> None:
         conversation = getattr(event.item, "conversation", None)
@@ -146,6 +163,10 @@ class ChatPanel(Horizontal):
         try:
             await self.client.send(self.active.cid, text)
             event.input.value = ""
+            pending = Message(f"local:{uuid4().hex}", "我", self.client.self_id, text, datetime.now(timezone.utc).isoformat())
+            self.pending_messages_by_cid.setdefault(self.active.cid, []).append(pending)
+            self.messages_by_cid.setdefault(self.active.cid, []).append(pending)
+            self._render_messages(self.messages_by_cid[self.active.cid])
             await self._load_messages(self.active)
             self._status("Sent")
         except DwsError as error:

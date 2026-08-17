@@ -2,7 +2,7 @@ import asyncio
 import unittest
 from unittest.mock import AsyncMock
 
-from store.dws_client import DwsClient, conversation_time, format_message_blocks, parse_conversations, parse_dings, parse_messages
+from store.dws_client import DwsClient, Message, conversation_time, format_message_blocks, merge_pending_messages, parse_conversations, parse_dings, parse_messages
 
 
 class DwsClientTest(unittest.TestCase):
@@ -27,6 +27,11 @@ class DwsClientTest(unittest.TestCase):
         blocks = format_message_blocks(messages, "u1")
         self.assertIn("Earlier", blocks[0])
         self.assertIn("Later", blocks[1])
+
+    def test_merges_recent_server_message_with_pending_message(self):
+        pending = Message("local:1", "A", "u1", "Hi", "2026-08-13T12:34:00Z")
+        server = Message("m1", "A", "u1", "Hi", "2026-08-13T12:34:02Z")
+        self.assertEqual(merge_pending_messages([server], [pending]), [server])
 
     def test_marks_a_conversation_read(self):
         client = DwsClient()

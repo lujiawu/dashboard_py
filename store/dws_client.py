@@ -121,6 +121,24 @@ def _message_order(message: Message) -> datetime:
             return datetime.min
 
 
+def merge_pending_messages(messages: list[Message], pending: list[Message]) -> list[Message]:
+    remaining = list(pending)
+    for message in messages:
+        for index, local in enumerate(remaining):
+            if message.sender_id != local.sender_id or message.text != local.text:
+                continue
+            message_time = _message_order(message)
+            local_time = _message_order(local)
+            if message_time.tzinfo != local_time.tzinfo:
+                message_time = message_time.replace(tzinfo=None)
+                local_time = local_time.replace(tzinfo=None)
+            if abs((message_time - local_time).total_seconds()) > 30:
+                continue
+            remaining.pop(index)
+            break
+    return messages + remaining
+
+
 class DwsClient:
     def __init__(self, yes: bool = True):
         self.yes = yes

@@ -46,7 +46,7 @@ ColumnDivider:hover {
 
 #bottom-row > #git-status {
     width: 1fr;
-    height: auto;
+    height: 1fr;
 }
 #bottom-row > #yunxiao {
     width: 4fr;
