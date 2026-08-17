@@ -142,19 +142,14 @@ class DashboardApp(App):
         left = self.query_one(f"#{left_id}")
         right = self.query_one(f"#{right_id}")
         left_width, right_width = resize_columns(
-            left.size.width,
-            right.size.width,
+            left.region.width,
+            right.region.width,
             delta,
             MIN_PANEL_WIDTHS[left_id],
             MIN_PANEL_WIDTHS[right_id],
         )
-        row_id = "top-row" if left_id in {"todo-list", "chat"} else "bottom-row"
-        row = self.query_one(f"#{row_id}")
-        widths = {panel.id: panel.size.width for panel in row.query(".panel")}
-        widths[left_id] = left_width
-        widths[right_id] = right_width
-        for panel in row.query(".panel"):
-            panel.styles.width = widths[panel.id] + 4
+        left.styles.width = left_width
+        right.styles.width = right_width
 
     def action_toggle_fullscreen(self) -> None:
         if self.screen.maximized:

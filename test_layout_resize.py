@@ -14,6 +14,11 @@ class LayoutResizeTest(unittest.TestCase):
         self.assertEqual(resize_columns(40, 50, 20, 30, 40), (50, 40))
         self.assertEqual(resize_columns(40, 50, -20, 30, 40), (30, 60))
 
+    def test_preserves_total_width_when_resizing(self):
+        left, right = resize_columns(40, 110, 10, 20, 101)
+        self.assertEqual((left, right), (49, 101))
+        self.assertEqual(left + right, 150)
+
     def test_dashboard_resize_rows_accepts_single_delta(self):
         import inspect
 
