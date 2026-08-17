@@ -83,7 +83,7 @@ ColumnDivider:hover {
 }
 
 #chat > #chat-conversations {
-    width: 2fr;
+    width: 3fr;
 }
 
 #chat > #chat-conversation-pane {

@@ -58,7 +58,7 @@ class ChatPanel(Horizontal):
             return
         try:
             all_conversations = await self.client.conversations()
-            self.conversations = [item for item in all_conversations if item.unread]
+            self.conversations = all_conversations
             self.dings = await self.client.unread_dings()
             self.dings_opened = False
             self.conversations.sort(key=lambda item: (not item.unread, -_conversation_order(item).timestamp()))
@@ -77,7 +77,7 @@ class ChatPanel(Horizontal):
         ding = Conversation(DING_CID, "DING", bool(self.dings) and not self.dings_opened, len(self.dings))
         items.append(ConversationItem(ding))
         unread_items = [item for item in self.conversations if item.unread]
-        read_items = [item for item in self.conversations if not item.unread]
+        read_items = [item for item in self.conversations if not item.unread][:10]
         if unread_items:
             items.append(GroupHeader("未读"))
             items.extend(ConversationItem(item) for item in unread_items)

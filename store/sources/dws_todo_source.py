@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from datetime import datetime, timezone, timedelta
 from typing import List
 
 from store.sources.base import DataSource
@@ -101,6 +102,27 @@ class DwsTodoSource(DataSource[List[Todo]]):
         )
         stdout, stderr = await proc.communicate()
         logger.info("[DWS] set_done_status rc=%d stdout=%s stderr=%s",
+            proc.returncode, stdout.decode().strip(), stderr.decode().strip())
+        return proc.returncode == 0
+
+    async def update_todo(self, task_id: str, title: str = None, priority: int = None, due_time: int = None) -> bool:
+        cmd = ["dws", "todo", "task", "update", "--task-id", task_id, "--format", "json", "-y"]
+        if title is not None:
+            cmd += ["--title", title]
+        if priority is not None:
+            cmd += ["--priority", str(priority)]
+        if due_time:
+            dt = datetime.fromtimestamp(due_time / 1000, tz=timezone(timedelta(hours=8)))
+            cmd += ["--due", dt.strftime("%Y-%m-%dT%H:%M:%S+08:00")]
+        logger.info("[DWS] update_todo task_id=%s args=%s", task_id, cmd)
+
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        logger.info("[DWS] update_todo rc=%d stdout=%s stderr=%s",
             proc.returncode, stdout.decode().strip(), stderr.decode().strip())
         return proc.returncode == 0
 

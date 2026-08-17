@@ -197,6 +197,8 @@ class DashboardApp(App):
         )
 
     async def _poll_todos(self):
+        if getattr(self, "_todo_editing", False):
+            return
         try:
             todos = await self.dws_todo_source.fetch()
             logger.info("[Poll] todos: %d items", len(todos))
@@ -250,6 +252,9 @@ class DashboardApp(App):
             event.stop()
         elif event.key == "t":
             asyncio.create_task(self._toggle_todo())
+            event.stop()
+        elif event.key == "e" and not getattr(self, "_todo_editing", False):
+            self.query_one("#todo-list", TodoPanel).action_edit_todo()
             event.stop()
         elif event.key == "z":
             self.action_toggle_fullscreen()

@@ -5,6 +5,7 @@ from textual.events import Click
 from textual import on
 from rich.text import Text
 from models.types import Todo
+from widgets.todo_edit_modal import TodoEditModal
 
 
 def _priority_label(priority: int) -> Text:
@@ -111,6 +112,12 @@ class TodoPanel(Vertical):
         if todo is None:
             return
         self.app.copy_to_clipboard(todo.subject)
+
+    def action_edit_todo(self):
+        todo = self._get_todo_at_index(self.cursor_row)
+        if todo is None:
+            return
+        self.app.push_screen(TodoEditModal(todo))
 
     def on_click(self, event: Click):
         if event.button == 3:
