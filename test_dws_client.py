@@ -2,7 +2,7 @@ import asyncio
 import unittest
 from unittest.mock import AsyncMock
 
-from store.dws_client import DwsClient, Message, conversation_time, format_message_blocks, merge_pending_messages, parse_conversations, parse_dings, parse_messages
+from store.dws_client import DwsClient, Ding, Message, _message_order, conversation_time, format_ding_blocks, format_message_blocks, merge_pending_messages, message_time, parse_conversations, parse_dings, parse_messages
 
 
 class DwsClientTest(unittest.TestCase):
@@ -18,6 +18,32 @@ class DwsClientTest(unittest.TestCase):
     def test_conversation_time_formats(self):
         self.assertEqual(conversation_time(""), "")
         self.assertEqual(conversation_time("not-a-time"), "")
+
+    def test_message_time_handles_non_string(self):
+        self.assertEqual(message_time(None), "")
+        self.assertEqual(message_time(123), "")
+        self.assertEqual(message_time(""), "")
+
+    def test_format_blocks_survive_null_create_time(self):
+        messages = [Message("m1", "A", "u1", "Hi", None)]
+        self.assertEqual(format_message_blocks(messages, "u1"), ["[dim][/]  [green]A[/]\n  Hi"])
+        dings = [Ding("content", "A", None)]
+        self.assertEqual(format_ding_blocks(dings), ["[dim][/]  A\n  content"])
+
+    def test_format_blocks_survive_non_string_fields(self):
+        messages = [Message("m1", {"nick": "A"}, "u1", {"body": "Hi"}, None)]
+        self.assertEqual(format_message_blocks(messages, "u1"), ["[dim][/]  [green]{'nick': 'A'}[/]\n  {'body': 'Hi'}"])
+        dings = [Ding({"c": 1}, {"s": 2}, None)]
+        self.assertEqual(format_ding_blocks(dings), ["[dim][/]  {'s': 2}\n  {'c': 1}"])
+
+    def test_message_order_sorts_mixed_naive_and_aware(self):
+        messages = [
+            Message("a", "A", "u1", "hi", "2026-08-19 09:52:55"),
+            Message("b", "B", "u2", "yo", "2026-08-19T03:19:20+00:00"),
+            Message("c", "C", "u3", "old", None),
+        ]
+        ordered = [m.message_id for m in sorted(messages, key=_message_order)]
+        self.assertEqual(ordered, ["c", "b", "a"])
 
     def test_formats_messages_in_time_order(self):
         messages = parse_messages({"messages": [

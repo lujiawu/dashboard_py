@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 import json
 import shutil
@@ -61,38 +61,43 @@ def parse_dings(data: dict) -> list[Ding]:
 
 
 def message_time(value: str) -> str:
+    if not isinstance(value, str):
+        return ""
     try:
         return datetime.fromisoformat(value.replace("Z", "+00:00")).strftime("%H:%M")
-    except (TypeError, ValueError):
+    except (ValueError, OverflowError):
         try:
             return datetime.strptime(value, "%Y-%m-%d %H:%M:%S").strftime("%H:%M")
-        except (TypeError, ValueError):
-            return value
+        except (ValueError, OverflowError):
+            return ""
 
 
 def format_message_blocks(messages: list[Message], self_id: str) -> list[str]:
     blocks = []
     for message in sorted(messages, key=_message_order):
         time = f"[dim]{escape(message_time(message.create_time))}[/]"
-        sender = f"[green]{escape(message.sender)}[/]" if message.sender_id == self_id else escape(message.sender)
-        blocks.append(f"{time}  {sender}\n  {escape(message.text or '')}")
+        sender = f"[green]{escape(str(message.sender or ''))}[/]" if message.sender_id == self_id else escape(str(message.sender or ''))
+        blocks.append(f"{time}  {sender}\n  {escape(str(message.text or ''))}")
     return blocks
 
 
 def format_ding_blocks(dings: list[Ding]) -> list[str]:
-    return [f"[dim]{escape(message_time(ding.create_time))}[/]  {escape(ding.sender)}\n  {escape(ding.content)}" for ding in dings]
+    return [f"[dim]{escape(message_time(ding.create_time))}[/]  {escape(str(ding.sender or ''))}\n  {escape(str(ding.content or ''))}" for ding in dings]
 
 
 def _conversation_datetime(value: str) -> datetime:
     if not value:
         return datetime.min
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except (TypeError, ValueError):
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (TypeError, ValueError, OverflowError):
         try:
-            return datetime.fromtimestamp(int(value) / 1000)
+            dt = datetime.fromtimestamp(int(value) / 1000)
         except (TypeError, ValueError, OverflowError):
             return datetime.min
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
 
 
 def _conversation_order(conversation: Conversation) -> datetime:
@@ -112,13 +117,19 @@ def conversation_time(value: str) -> str:
 
 
 def _message_order(message: Message) -> datetime:
+    value = message.create_time
+    if not isinstance(value, str):
+        return datetime.min
     try:
-        return datetime.fromisoformat(message.create_time.replace("Z", "+00:00"))
-    except (AttributeError, TypeError, ValueError):
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (ValueError, OverflowError):
         try:
-            return datetime.strptime(message.create_time, "%Y-%m-%d %H:%M:%S")
-        except (TypeError, ValueError):
+            dt = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+        except (ValueError, OverflowError):
             return datetime.min
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
 
 
 def merge_pending_messages(messages: list[Message], pending: list[Message]) -> list[Message]:
