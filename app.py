@@ -104,9 +104,9 @@ class DashboardApp(App):
     def compose(self) -> ComposeResult:
         yield Vertical(
             Horizontal(
-                TodoPanel(id="todo-list", classes="panel"),
-                ColumnDivider("todo-list", "chat", id="todo-chat-divider"),
                 ChatPanel(DwsClient(), id="chat", classes="panel"),
+                ColumnDivider("chat", "todo-list", id="chat-todo-divider"),
+                TodoPanel(id="todo-list", classes="panel"),
                 id="top-row"
             ),
             Horizontal(

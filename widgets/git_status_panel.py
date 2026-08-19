@@ -48,7 +48,7 @@ class GitStatusPanel(Static):
     can_focus = True
 
     def on_mount(self):
-        self.border_title = "Git Status"
+        self.border_title = "GIT STATUS"
         self._repos = [Path(p).expanduser() for p in cfg.get("git", {}).get("repos", [])]
         self._last_output = ""
         self.update("Scanning..." if self._repos else "No repos configured.\nAdd paths in git.repos config.")

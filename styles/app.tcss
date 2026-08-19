@@ -2,6 +2,15 @@
 #main-layout {
     height: 100%;
     layers: base overlay;
+    color: #d8dee9;
+}
+
+DataTable {
+    color: #d8dee9;
+}
+
+RichLog {
+    color: #d8dee9;
 }
 
 #top-row {
@@ -23,11 +32,11 @@ RowDivider {
 
 /* ===== 列宽分配 ===== */
 #top-row > #todo-list{
-    width: 1fr;
+    width: 2fr;
 }
 
 #top-row > #chat {
-    width: 1fr;
+    width: 3fr;
 }
 
 ColumnDivider {
@@ -46,7 +55,7 @@ ColumnDivider:hover {
 
 #bottom-row > #git-status {
     width: 1fr;
-    height: 1fr;
+    height: auto;
 }
 #bottom-row > #yunxiao {
     width: 4fr;
@@ -61,14 +70,14 @@ ColumnDivider:hover {
 }
 
 #todo-list.panel {
-    border: solid $warning;
+    border: solid $surface-lighten-2;
 }
 #todo-list.panel:focus, #todo-list.panel:focus-within {
     border: solid $text-accent;
 }
 
 #git-status.panel {
-    border: solid $error;
+    border: solid $surface-lighten-2;
     padding: 1 2;
 }
 #git-status.panel:focus, #git-status.panel:focus-within {
@@ -76,7 +85,7 @@ ColumnDivider:hover {
 }
 
 #yunxiao.panel {
-    border: solid $secondary;
+    border: solid $surface-lighten-2;
 }
 #yunxiao.panel:focus, #yunxiao.panel:focus-within {
     border: solid $text-accent;

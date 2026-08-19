@@ -80,6 +80,7 @@ class YunxiaoPanel(Vertical):
         self._table.add_column("Title", width=TITLE_MAX_CELLS)
         created_col = self._table.add_column("Date", width=5)
         self._table.columns[created_col].justify = "right"
+        self.border_title = "WORK ITEMS"
         self._item_map: dict[int, Dict[str, Any]] = {}
 
     def update_items(self, items: List[Dict[str, Any]]):
@@ -101,6 +102,7 @@ class YunxiaoPanel(Vertical):
             rows.append((icon, title, created))
 
         self._table.add_rows(rows)
+        self.border_title = f"WORK ITEMS · {len(items)}"
         logger.info("[YunxiaoPanel] updated with %d items", len(items))
 
     def _open_url(self, row_index: int):

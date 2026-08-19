@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Input, Label, ListItem, ListView, RichLog, Static
+from rich.text import Text
 
 from store.dws_client import Conversation, Ding, DwsClient, DwsError, Message, _conversation_order, _message_order, conversation_time, format_ding_blocks, format_message_blocks, merge_pending_messages
 
@@ -70,6 +71,7 @@ class ChatPanel(Horizontal):
             if self.active and self.active.cid != DING_CID:
                 await self._load_messages(self.active)
             unread_count = sum(1 for item in self.conversations if item.unread)
+            self.border_title = f"CHAT · {unread_count} unread" if unread_count else "CHAT"
             self._status(f"Unread conversations: {unread_count}")
         except DwsError as error:
             self._status(f"Refresh failed: {error}")
@@ -99,7 +101,9 @@ class ChatPanel(Horizontal):
             self.dings_opened = True
             log = self.query_one("#chat-messages", RichLog)
             log.clear()
-            for block in format_ding_blocks(dings):
+            for i, block in enumerate(format_ding_blocks(dings)):
+                if i:
+                    log.write(Text("─" * 24, style="dim"))
                 log.write(block)
             log.scroll_end(animate=False)
             await self._render_conversations()

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
 from textual.widgets import DataTable, Input
 from textual.containers import Vertical
 from textual.events import Click
@@ -6,6 +6,46 @@ from textual import on
 from rich.text import Text
 from models.types import Todo
 from widgets.todo_edit_modal import TodoEditModal
+
+
+_BJ_TZ = timezone(timedelta(hours=8))
+_GROUPS = (
+    ("overdue", "已逾期"),
+    ("today", "今日待办"),
+    ("tomorrow", "明日待办"),
+    ("future", "未来待办"),
+    ("no_due", "无截止日期"),
+)
+
+
+def group_todos(todos: list[Todo], today: date | None = None) -> list[tuple[str, list[Todo]]]:
+    today = today or datetime.now(tz=_BJ_TZ).date()
+    grouped = {key: [] for key, _label in _GROUPS}
+
+    for todo in todos:
+        if not todo.due_time:
+            grouped["no_due"].append(todo)
+            continue
+        try:
+            due_date = datetime.fromtimestamp(todo.due_time / 1000, tz=_BJ_TZ).date()
+        except (OverflowError, OSError, TypeError, ValueError):
+            grouped["no_due"].append(todo)
+            continue
+        if due_date < today:
+            grouped["overdue"].append(todo)
+        elif due_date == today:
+            grouped["today"].append(todo)
+        elif due_date == today + timedelta(days=1):
+            grouped["tomorrow"].append(todo)
+        else:
+            grouped["future"].append(todo)
+
+    for group in grouped.values():
+        group.sort(key=lambda todo: (
+            -todo.priority,
+            todo.due_time if isinstance(todo.due_time, (int, float)) else 2**31,
+        ))
+    return [(key, grouped[key]) for key, _label in _GROUPS if grouped[key]]
 
 
 def _priority_label(priority: int) -> Text:
@@ -20,9 +60,9 @@ def _format_due(due_time: int) -> str:
     if not due_time:
         return "--"
     try:
-        dt = datetime.fromtimestamp(due_time / 1000, tz=timezone(timedelta(hours=8)))
+        dt = datetime.fromtimestamp(due_time / 1000, tz=_BJ_TZ)
         return dt.strftime("%m-%d")
-    except (ValueError, OSError):
+    except (OverflowError, OSError, TypeError, ValueError):
         return "--"
 
 
@@ -52,7 +92,8 @@ class TodoPanel(Vertical):
         self._table.add_column("P", width=3)
         self._table.add_column("Due", width=8)
         self._subject_key = self._table.add_column("Subject", width=None)
-        self._description_key = self._table.add_column("Description", width=None)
+        self._description_key = self._table.add_column("Description", width=24)
+        self.border_title = "TODO"
         self._table.focus()
 
     @on(DataTable.RowSelected)
@@ -74,20 +115,25 @@ class TodoPanel(Vertical):
             self._row_keys = self._table.add_rows([(Text("", style=""), Text("", style=""), Text("🎉 暂无待办", style="dim"), Text("", style=""))])
         else:
             self._row_keys = self._table.add_rows(rows)
+        self.border_title = f"TODO · {len(todos)}"
 
     def _build_rows(self, todos: list[Todo]) -> list[tuple]:
         if not todos:
             return []
 
-        todos.sort(key=lambda t: (-t.priority, t.due_time if t.due_time else 2**31))
-        self._todo_map = {i: todo for i, todo in enumerate(todos)}
-
         rows = []
-        for todo in todos:
-            p_str = _priority_label(todo.priority)
-            due_str = _format_due(todo.due_time)
-            subject = f"✅ {todo.subject or '?'}" if todo.completed else (todo.subject or "?")
-            rows.append((p_str, due_str, subject, todo.description or ""))
+        row_index = 0
+        labels = dict(_GROUPS)
+        for group_key, group_todos_list in group_todos(todos):
+            rows.append((Text(""), Text(""), Text(labels[group_key], style="bold cyan"), Text("")))
+            row_index += 1
+            for todo in group_todos_list:
+                p_str = _priority_label(todo.priority)
+                due_str = _format_due(todo.due_time)
+                subject = f"✅ {todo.subject or '?'}" if todo.completed else (todo.subject or "?")
+                rows.append((p_str, due_str, subject, todo.description or ""))
+                self._todo_map[row_index] = todo
+                row_index += 1
 
         return rows
 

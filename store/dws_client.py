@@ -73,14 +73,14 @@ def message_time(value: str) -> str:
 def format_message_blocks(messages: list[Message], self_id: str) -> list[str]:
     blocks = []
     for message in sorted(messages, key=_message_order):
-        metadata = f"[dim]{escape(message_time(message.create_time))}[/]  "
-        metadata += f"[green]{escape(message.sender)}[/]" if message.sender_id == self_id else escape(message.sender)
-        blocks.append(f"{metadata}\n{escape(message.text or '')}\n")
+        time = f"[dim]{escape(message_time(message.create_time))}[/]"
+        sender = f"[green]{escape(message.sender)}[/]" if message.sender_id == self_id else escape(message.sender)
+        blocks.append(f"{time}  {sender}\n  {escape(message.text or '')}")
     return blocks
 
 
 def format_ding_blocks(dings: list[Ding]) -> list[str]:
-    return [f"[dim]{escape(message_time(ding.create_time))}[/]  {escape(ding.sender)}\n{escape(ding.content)}\n" for ding in dings]
+    return [f"[dim]{escape(message_time(ding.create_time))}[/]  {escape(ding.sender)}\n  {escape(ding.content)}" for ding in dings]
 
 
 def _conversation_datetime(value: str) -> datetime:
