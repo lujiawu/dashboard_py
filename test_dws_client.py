@@ -2,7 +2,7 @@ import asyncio
 import unittest
 from unittest.mock import AsyncMock
 
-from store.dws_client import DwsClient, Ding, Message, _message_order, conversation_time, format_ding_blocks, format_message_blocks, merge_pending_messages, message_time, parse_conversations, parse_dings, parse_messages
+from store.dws_client import DwsClient, Ding, Message, SELF_COLOR, OTHER_COLOR, _message_order, conversation_time, format_ding_blocks, format_message_blocks, merge_pending_messages, message_time, parse_conversations, parse_dings, parse_messages
 
 
 class DwsClientTest(unittest.TestCase):
@@ -26,13 +26,21 @@ class DwsClientTest(unittest.TestCase):
 
     def test_format_blocks_survive_null_create_time(self):
         messages = [Message("m1", "A", "u1", "Hi", None)]
-        self.assertEqual(format_message_blocks(messages, "u1"), ["[dim][/]  [green]A[/]\n  Hi"])
+        blocks = format_message_blocks(messages, "u1")
+        self.assertEqual(len(blocks), 1)
+        self.assertIn("我", blocks[0].markup)
+        self.assertIn("Hi", blocks[0].markup)
+        self.assertIn(SELF_COLOR, blocks[0].markup)
+        self.assertEqual(blocks[0].justify, "right")
         dings = [Ding("content", "A", None)]
         self.assertEqual(format_ding_blocks(dings), ["[dim][/]  A\n  content"])
 
     def test_format_blocks_survive_non_string_fields(self):
         messages = [Message("m1", {"nick": "A"}, "u1", {"body": "Hi"}, None)]
-        self.assertEqual(format_message_blocks(messages, "u1"), ["[dim][/]  [green]{'nick': 'A'}[/]\n  {'body': 'Hi'}"])
+        blocks = format_message_blocks(messages, "u1")
+        self.assertIn("我", blocks[0].markup)
+        self.assertIn("{'body': 'Hi'}", blocks[0].markup)
+        self.assertIn(SELF_COLOR, blocks[0].markup)
         dings = [Ding({"c": 1}, {"s": 2}, None)]
         self.assertEqual(format_ding_blocks(dings), ["[dim][/]  {'s': 2}\n  {'c': 1}"])
 
@@ -50,9 +58,35 @@ class DwsClientTest(unittest.TestCase):
             {"messageId": "2", "sender": "B", "senderId": "u2", "text": "Later", "createTime": "2026-08-13T12:35:00Z"},
             {"messageId": "1", "sender": "A", "senderId": "u1", "text": "Earlier", "createTime": "2026-08-13T12:34:00Z"},
         ]})
-        blocks = format_message_blocks(messages, "u1")
-        self.assertIn("Earlier", blocks[0])
-        self.assertIn("Later", blocks[1])
+        blocks = [b for b in format_message_blocks(messages, "u1") if b.plain.strip()]
+        self.assertIn("Earlier", blocks[0].markup)
+        self.assertIn("Later", blocks[1].markup)
+        self.assertIn(SELF_COLOR, blocks[0].markup)
+        self.assertIn(OTHER_COLOR, blocks[1].markup)
+        self.assertEqual(blocks[0].justify, "right")
+        self.assertEqual(blocks[1].justify, "left")
+
+    def test_groups_consecutive_same_sender(self):
+        messages = [
+            Message("1", "A", "u1", "one", "2026-08-13T12:34:00Z"),
+            Message("2", "A", "u1", "two", "2026-08-13T12:35:00Z"),
+            Message("3", "B", "u2", "three", "2026-08-13T12:36:00Z"),
+        ]
+        groups = [b for b in format_message_blocks(messages, "u1") if b.plain.strip()]
+        self.assertEqual(len(groups), 2)
+        self.assertIn("one", groups[0].markup)
+        self.assertIn("two", groups[0].markup)
+        self.assertIn("three", groups[1].markup)
+        self.assertEqual(groups[0].justify, "right")
+
+    def test_splits_same_sender_when_interrupted(self):
+        messages = [
+            Message("1", "A", "u1", "one", "2026-08-13T12:34:00Z"),
+            Message("2", "B", "u2", "two", "2026-08-13T12:35:00Z"),
+            Message("3", "A", "u1", "three", "2026-08-13T12:36:00Z"),
+        ]
+        groups = [b for b in format_message_blocks(messages, "u1") if b.plain.strip()]
+        self.assertEqual(len(groups), 3)
 
     def test_merges_recent_server_message_with_pending_message(self):
         pending = Message("local:1", "A", "u1", "Hi", "2026-08-13T12:34:00Z")

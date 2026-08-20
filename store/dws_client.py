@@ -5,6 +5,7 @@ import json
 import shutil
 
 from rich.markup import escape
+from rich.text import Text
 
 
 class DwsError(RuntimeError):
@@ -72,13 +73,38 @@ def message_time(value: str) -> str:
             return ""
 
 
-def format_message_blocks(messages: list[Message], self_id: str) -> list[str]:
-    blocks = []
+SELF_COLOR = "bright_blue"
+OTHER_COLOR = "grey74"
+
+
+def format_message_blocks(messages: list[Message], self_id: str) -> list[Text]:
+    blocks: list[Text] = []
+    group: list[Message] = []
     for message in sorted(messages, key=_message_order):
-        time = f"[dim]{escape(message_time(message.create_time))}[/]"
-        sender = f"[green]{escape(str(message.sender or ''))}[/]" if message.sender_id == self_id else escape(str(message.sender or ''))
-        blocks.append(f"{time}  {sender}\n  {escape(str(message.text or ''))}")
+        if group and message.sender_id != group[-1].sender_id:
+            blocks.append(_format_group(group, self_id))
+            group = []
+        group.append(message)
+    if group:
+        blocks.append(_format_group(group, self_id))
+    for index in range(len(blocks) - 1, 0, -1):
+        blocks.insert(index, Text(" ", style="dim"))
     return blocks
+
+
+def _format_group(group: list[Message], self_id: str) -> Text:
+    first = group[0]
+    is_self = first.sender_id == self_id
+    color = SELF_COLOR if is_self else OTHER_COLOR
+    text = Text()
+    text.append(message_time(first.create_time), style="dim")
+    text.append("  ")
+    text.append("我" if is_self else str(first.sender or ""), style=color)
+    for message in group:
+        text.append("\n  ")
+        text.append(str(message.text or ""), style=color)
+    text.justify = "right" if is_self else "left"
+    return text
 
 
 def format_ding_blocks(dings: list[Ding]) -> list[str]:
