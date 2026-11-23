@@ -49,6 +49,21 @@ STATUS_SORT_ORDER = [
     "重复缺陷", "暂不修复",
     "已完成", "已关闭", "无效缺陷",
 ]
+STATUS_ID_BY_NAME = {
+    "待处理": "100005",
+    "待确认": "28",
+    "处理中": "100010",
+    "待开发自验": "53e19cb99ba3b295fd38a3667b",
+    "再次打开": "30",
+    "待测试回归": "3e729203f51f6d60719dd35848",
+    "待测试复现": "4e7a6897b94d883f7d716ee854",
+    "待测试确认": "e9c54fd14bc15561c13039fb7d",
+    "已完成": "100014",
+    "暂不修复": "31",
+    "重复缺陷": "626216",
+    "无效缺陷": "37",
+    "需求变更": "2c8fd5a9d9f96f35e247597a3e",
+}
 
 CONFIG_PATH = Path.home() / ".config" / "dashboard" / "config.json"
 
@@ -78,14 +93,22 @@ def load_config() -> dict:
 # ============================================================================
 # OpenAPI 查询
 # ============================================================================
+def resolve_status_ids(status_arg: str) -> List[str]:
+    """逗号分隔的状态名或 ID；已知名字转 ID，未知值原样当 ID。"""
+    return [STATUS_ID_BY_NAME.get(s.strip(), s.strip())
+            for s in status_arg.split(",") if s.strip()]
+
+
 def search_workitems(
     domain: str, org_id: str, token: str,
     project_id: str, category: str,
     user_id: str = "",
+    status_ids: Optional[List[str]] = None,
 ) -> List[dict]:
     url = f"https://{domain}/oapi/v1/projex/organizations/{org_id}/workitems:search"
 
-    status_ids = TASK_ACTIVE_STATUS if category == "Task" else BUG_ACTIVE_STATUS
+    if not status_ids:
+        status_ids = TASK_ACTIVE_STATUS if category == "Task" else BUG_ACTIVE_STATUS
     filters = [
         {
             "fieldIdentifier": "status",
@@ -143,10 +166,12 @@ def format_item(item: dict, category: str, project_id: str) -> dict:
     status_name = status.get("displayName") or status.get("name", "")
     raw_title = item.get("subject", "")
     created = item.get("gmtCreate", 0)
+    ts = 0
 
     if created:
         try:
-            dt = datetime.fromtimestamp(int(created) / 1000)
+            ts = int(created)
+            dt = datetime.fromtimestamp(ts / 1000)
             created_str = dt.strftime("%m-%d %H:%M")
         except (ValueError, OSError):
             created_str = str(created)
@@ -164,6 +189,7 @@ def format_item(item: dict, category: str, project_id: str) -> dict:
         "assignee": (item.get("assignedTo") or {}).get("name", ""),
         "url": url,
         "created_at": created_str,
+        "ts": ts,
     }
 
 
@@ -207,8 +233,9 @@ def _print_table_rich(groups: Dict[str, List[dict]]) -> None:
         console.print(f"\n  [{type_style}]{type_name} ({len(type_items)})[/]")
 
         table = Table(box=box.SIMPLE, padding=(0, 1))
+        table.add_column("ID", no_wrap=True, width=12)
         table.add_column("Status", no_wrap=True, width=10)
-        table.add_column("Title", no_wrap=False, ratio=1)
+        table.add_column("Title", no_wrap=False, ratio=1, overflow="fold")
         table.add_column("Created", no_wrap=True, width=14)
 
         for item in type_items:
@@ -216,7 +243,7 @@ def _print_table_rich(groups: Dict[str, List[dict]]) -> None:
             status = item["status"]
             created = item["created_at"]
             status_style = _status_style(status)
-            table.add_row(f"[{status_style}]{status}[/]", title, created)
+            table.add_row(item["sn"], f"[{status_style}]{status}[/]", title, created)
 
         console.print(table)
 
@@ -228,14 +255,14 @@ def _print_table_plain(groups: Dict[str, List[dict]]) -> None:
             continue
 
         print(f"\n  {type_name} ({len(type_items)})")
-        print(f"  {'Status':<10} {'Title':<60} {'Created'}")
-        print(f"  {'-'*10} {'-'*60} {'-'*16}")
+        print(f"  {'ID':<12} {'Status':<10} {'Title':<60} {'Created'}")
+        print(f"  {'-'*12} {'-'*10} {'-'*60} {'-'*16}")
 
         for item in type_items:
-            title = item["title"][:74]
+            title = item["title"]
             status = item["status"][:10]
             created = item["created_at"]
-            print(f"  {status:<10} {title:<74} {created}")
+            print(f"  {item['sn']:<12} {status:<10} {title}  {created}")
 
 
 def _status_style(status: str) -> str:
@@ -278,6 +305,10 @@ def main():
     parser.add_argument("--config", help="指定配置文件路径")
     parser.add_argument("--categories", default="Bug,Task",
                         help="查询类型 (默认: Bug,Task)")
+    parser.add_argument("--status",
+                        help="状态过滤，逗号分隔的状态名或 ID（替换默认活跃状态）")
+    parser.add_argument("--limit", type=int, default=0,
+                        help="最多输出条数（按创建时间倒序）")
     args = parser.parse_args()
 
     if args.config:
@@ -297,6 +328,7 @@ def main():
     pat = config.get("pat", "")
     user_id = "" if args.all else config.get("user_id", "")
     categories = [c.strip() for c in args.categories.split(",") if c.strip()]
+    status_ids = resolve_status_ids(args.status) if args.status else None
 
     if args.project:
         project_ids = [p.strip() for p in args.project.split(",") if p.strip()]
@@ -316,7 +348,7 @@ def main():
     def fetch_one(proj_id: str, category: str) -> List[dict]:
         try:
             raw_items = search_workitems(
-                domain, org_id, pat, proj_id, category, user_id
+                domain, org_id, pat, proj_id, category, user_id, status_ids
             )
             return [format_item(it, category, proj_id) for it in raw_items]
         except urllib.error.HTTPError as e:
@@ -334,7 +366,11 @@ def main():
         for fut in concurrent.futures.as_completed(fut_map):
             all_items.extend(fut.result())
 
-    all_items.sort(key=sort_key)
+    if args.limit and args.limit > 0:
+        all_items.sort(key=lambda item: item["ts"], reverse=True)
+        all_items = all_items[:args.limit]
+    else:
+        all_items.sort(key=sort_key)
 
     if args.json:
         print_json(all_items)
