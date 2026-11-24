@@ -184,7 +184,7 @@ def format_item(item: dict, category: str, project_id: str) -> dict:
     return {
         "type": category,
         "sn": sn,
-        "title": f"[{status_name}] {clean_title(raw_title)}",
+        "title": clean_title(raw_title),
         "status": status_name,
         "assignee": (item.get("assignedTo") or {}).get("name", ""),
         "url": url,
@@ -206,7 +206,7 @@ def sort_key(item: dict) -> tuple:
 # ============================================================================
 # 输出
 # ============================================================================
-def print_table(items: List[dict]) -> None:
+def print_table(items: List[dict], plain: bool = False) -> None:
     if not items:
         print("  (无数据)")
         return
@@ -215,7 +215,7 @@ def print_table(items: List[dict]) -> None:
     for item in items:
         groups.setdefault(item["type"], []).append(item)
 
-    if _HAS_RICH:
+    if _HAS_RICH and not plain:
         _print_table_rich(groups)
     else:
         _print_table_plain(groups)
@@ -309,6 +309,8 @@ def main():
                         help="状态过滤，逗号分隔的状态名或 ID（替换默认活跃状态）")
     parser.add_argument("--limit", type=int, default=0,
                         help="最多输出条数（按创建时间倒序）")
+    parser.add_argument("--plain", action="store_true",
+                        help="使用带分隔线的纯文本表格")
     args = parser.parse_args()
 
     if args.config:
@@ -374,14 +376,14 @@ def main():
 
     if args.json:
         print_json(all_items)
-    elif _HAS_RICH:
+    elif _HAS_RICH and not args.plain:
         Console().print(f"\n  [bold]云效任务大盘[/] ({datetime.now().strftime('%Y-%m-%d %H:%M')})")
         print_table(all_items)
         Console().print()
     else:
         print(f"\n  云效任务大盘 ({datetime.now().strftime('%Y-%m-%d %H:%M')})")
         print(f"  {'='*60}")
-        print_table(all_items)
+        print_table(all_items, plain=True)
         print()
 
 
